@@ -1,0 +1,33 @@
+:root { --bg:#0b1220; --panel:#0f1b2f; --text:#e7eefc; --muted:#9fb2d9; --accent:#4ea1ff; --danger:#ff5a6a; }
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+a{color:inherit;text-decoration:none}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:280px;background:var(--panel);padding:18px;display:flex;flex-direction:column;gap:14px;border-right:1px solid rgba(255,255,255,.06)}
+.brand-title{font-weight:800;font-size:18px}
+.brand-sub{color:var(--muted);font-size:13px;margin-top:2px}
+.nav{display:flex;flex-direction:column;gap:6px}
+.nav-section{margin-top:10px;margin-bottom:6px;color:var(--muted);font-size:12px;letter-spacing:.5px;text-transform:uppercase}
+.nav-item{padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03)}
+.nav-item:hover{background:rgba(255,255,255,.07)}
+.nav-item.danger{background:rgba(255,90,106,.12);border:1px solid rgba(255,90,106,.25)}
+.content{flex:1;padding:22px}
+h1{margin:0 0 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);padding:14px;border-radius:14px}
+.btn{display:inline-block;margin-top:10px;background:rgba(78,161,255,.16);border:1px solid rgba(78,161,255,.35);padding:8px 10px;border-radius:10px}
+.muted{color:var(--muted)}
+.messages{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.msg{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.msg.success{border-color:rgba(80,255,170,.25)}
+.msg.error{border-color:rgba(255,90,106,.25)}
+.userbox{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.userbox-meta{color:var(--muted);font-size:12px;margin-top:4px}
+.form{max-width:560px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);padding:14px;border-radius:14px}
+.input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:var(--text)}
+.label{display:block;color:var(--muted);font-size:12px;margin:10px 0 6px}
+.row{display:flex;gap:10px;align-items:center}
+.table{width:100%;border-collapse:collapse;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden}
+.table th,.table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left}
+.table th{color:var(--muted);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:var(--muted);font-size:12px}

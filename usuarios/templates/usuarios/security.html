@@ -1,0 +1,162 @@
+{% extends "core/base.html" %}
+{% block title %}Seguridad{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-4xl mx-auto">
+  <div class="mb-5">
+    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900">Seguridad</h1>
+    <p class="text-sm text-slate-600 mt-1">
+      Activa el segundo factor (2FA) y administra tus dispositivos de confianza (90 días).
+    </p>
+  </div>
+
+  {% if messages %}
+    <div class="mb-4 space-y-2">
+      {% for message in messages %}
+        <div class="text-sm px-4 py-3 rounded-2xl border
+          {% if message.tags == 'error' %}bg-red-50 text-red-800 border-red-200
+          {% elif message.tags == 'success' %}bg-emerald-50 text-emerald-800 border-emerald-200
+          {% elif message.tags == 'warning' %}bg-amber-50 text-amber-900 border-amber-200
+          {% else %}bg-sky-50 text-sky-900 border-sky-200{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- Card 2FA -->
+    <div class="rounded-3xl bg-white border border-slate-200 shadow-sm p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="text-slate-900 font-extrabold text-lg">Segundo factor (2FA)</h2>
+          <p class="text-xs text-slate-600 mt-1">
+            Escanea el QR con Google Authenticator / Microsoft Authenticator.
+          </p>
+        </div>
+
+        {% if two_factor_enabled %}
+          <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-extrabold">
+            Activado
+          </span>
+        {% else %}
+          <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-xs font-extrabold">
+            No activado
+          </span>
+        {% endif %}
+      </div>
+
+      <div class="mt-4 rounded-2xl bg-slate-50 border border-slate-200 p-4">
+        <div class="text-xs text-slate-600 font-extrabold mb-2">1) Escanea el QR</div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ otp_uri|urlencode }}"
+            alt="QR 2FA"
+            class="rounded-2xl border border-slate-200 bg-white p-2 w-[210px] h-[210px]"
+          >
+
+          <div class="text-xs text-slate-700 space-y-2">
+            <p>Si no puedes escanear, agrega manualmente usando esta clave:</p>
+
+            <code class="block text-sm font-mono bg-white px-3 py-2 rounded-2xl border border-slate-200 text-slate-900 break-all">
+              {{ secret }}
+            </code>
+
+            <p class="text-slate-600">
+              Luego ingresa un código para confirmar.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <form method="post" class="mt-4 space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="enable_2fa">
+
+        <div>
+          <label class="text-xs text-slate-700 font-extrabold">2) Código de verificación</label>
+          <input type="text"
+                 name="code"
+                 required
+                 inputmode="numeric"
+                 autocomplete="one-time-code"
+                 placeholder="123 456"
+                 class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400">
+          <p class="text-[11px] text-slate-500 mt-1">
+            Código de 6 dígitos generado por tu app.
+          </p>
+        </div>
+
+        <button type="submit"
+                class="inline-flex items-center justify-center gap-2 w-full rounded-2xl px-4 py-3
+                       bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-sm">
+          Activar 2FA
+        </button>
+
+        {% if two_factor_enabled %}
+          <p class="text-xs text-emerald-700 mt-1">✅ 2FA activo en tu cuenta.</p>
+        {% else %}
+          <p class="text-xs text-amber-700 mt-1">⚠ Aún no has activado 2FA.</p>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Trusted devices -->
+    <div class="rounded-3xl bg-white border border-slate-200 shadow-sm p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="text-slate-900 font-extrabold text-lg">Dispositivos de confianza</h2>
+          <p class="text-xs text-slate-600 mt-1">
+            Estos dispositivos no pedirán 2FA por {{ trusted_days|default:90 }} días.
+          </p>
+        </div>
+      </div>
+
+      {% if devices %}
+        <div class="mt-4 overflow-x-auto">
+          <table class="min-w-full text-xs text-slate-700">
+            <thead class="text-slate-500">
+              <tr class="border-b border-slate-200">
+                <th class="py-2 pr-3 text-left">Dispositivo</th>
+                <th class="py-2 pr-3 text-left">IP</th>
+                <th class="py-2 pr-3 text-left">Último uso</th>
+                <th class="py-2 pr-3 text-left">Expira</th>
+                <th class="py-2 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              {% for d in devices %}
+              <tr class="hover:bg-slate-50">
+                <td class="py-2 pr-3 max-w-[220px] truncate" title="{{ d.user_agent }}">
+                  {{ d.user_agent|default:"Dispositivo desconocido" }}
+                </td>
+                <td class="py-2 pr-3">{{ d.ip_address|default:"-" }}</td>
+                <td class="py-2 pr-3 whitespace-nowrap">{{ d.last_used_at|date:"Y-m-d H:i" }}</td>
+                <td class="py-2 pr-3 whitespace-nowrap">{{ d.expires_at|date:"Y-m-d H:i" }}</td>
+                <td class="py-2 text-right">
+                  <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_device">
+                    <input type="hidden" name="device_id" value="{{ d.id }}">
+                    <button type="submit"
+                            class="px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 font-semibold">
+                      Eliminar
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="mt-4 text-xs text-slate-500">
+          Todavía no tienes dispositivos de confianza.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

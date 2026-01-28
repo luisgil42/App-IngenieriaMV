@@ -1,0 +1,77 @@
+{% extends "core/base.html" %}
+{% block title %}{{ title }} - Roles{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-2xl mx-auto px-3 sm:px-0">
+  <div class="mb-5">
+    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900">
+      {{ title }}
+    </h1>
+    <p class="text-sm text-slate-600 mt-1">
+      Crea o edita un rol del sistema.
+    </p>
+  </div>
+
+  <div class="rounded-3xl bg-white border border-slate-200 p-6 shadow">
+    {% if form.non_field_errors %}
+      <div class="mb-4 rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+
+      <div>
+        <label class="text-xs text-slate-600 font-semibold">Nombre</label>
+        <input type="text" name="name" required
+               value="{{ form.name.value|default:'' }}"
+               class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                      focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+        {% if form.name.errors %}
+          <div class="mt-2 text-sm text-red-600">{{ form.name.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-600 font-semibold">Descripción</label>
+        <input type="text" name="description"
+               value="{{ form.description.value|default:'' }}"
+               class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                      focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+        {% if form.description.errors %}
+          <div class="mt-2 text-sm text-red-600">{{ form.description.errors }}</div>
+        {% endif %}
+      </div>
+
+      <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-2">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" name="is_active" class="rounded border-slate-300"
+                 {% if form.instance.is_active %}checked{% endif %}>
+          <span>Activo</span>
+        </label>
+
+        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" name="require_2fa" class="rounded border-slate-300"
+                 {% if form.instance.require_2fa %}checked{% endif %}>
+          <span>Requiere 2FA</span>
+        </label>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button type="submit"
+                class="inline-flex items-center justify-center w-full sm:w-auto rounded-2xl px-6 py-3
+                       bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+          Guardar
+        </button>
+
+        <a href="{% url 'usuarios:role_list' %}"
+           class="inline-flex items-center justify-center w-full sm:w-auto rounded-2xl px-6 py-3
+                  bg-white hover:bg-slate-50 text-slate-800 font-bold border border-slate-200">
+          Volver
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

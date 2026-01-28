@@ -1,0 +1,823 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Negocios - Finanzas Comercial{% endblock %}
+
+{% block dashboard_content %}
+<div class="w-full mx-auto bg-white p-6 rounded-2xl shadow mt-6">
+
+<style>
+  .tabla-responsive{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    width:100%;
+  }
+  .tabla-responsive table{
+    min-width: 1600px; /* ✅ evita “amorchado” */
+    white-space: nowrap;
+  }
+  .cell-wrap{
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  /* ===== Excel header filter ===== */
+  .excel-header-btn{
+    width:100%;
+    justify-content:center;
+    font-size:0.875rem;
+  }
+  .excel-header-btn .excel-arrow{
+    font-size:0.65rem;
+    margin-left:2px;
+  }
+  .excel-panel{
+    position:fixed;
+    z-index:50;
+    width:260px;
+    background:#fff;
+    border-radius:0.75rem;
+    border:1px solid #d1d5db;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+    padding:0.75rem;
+    font-size:0.8rem;
+  }
+  .excel-panel .excel-options{
+    max-height:180px;
+    overflow-y:auto;
+    border:1px solid #e5e7eb;
+    border-radius:0.5rem;
+    padding:0.25rem 0.5rem;
+    margin-top:0.25rem;
+    background:#f9fafb;
+  }
+  .excel-col-filtered .excel-header-btn{
+    background:#e0f2fe;
+    border-radius:999px;
+  }
+  .excel-col-filtered .excel-arrow{
+    color:#2563eb !important;
+  }
+</style>
+
+<div class="flex items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-extrabold text-slate-900">Negocios</h1>
+    <p class="text-slate-500 text-sm">Listado de negocios.</p>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <a href="{% url 'finanzas_comercial:deal_import' %}"
+       class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+      Importar
+    </a>
+
+    <a href="{% url 'finanzas_comercial:deal_export_xlsx' %}"
+       class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+      Exportar Excel
+    </a>
+
+    <a href="{% url 'finanzas_comercial:deal_list' %}?stages=1&cantidad={{ cantidad|urlencode }}"
+       class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+      Etapas
+    </a>
+
+    <a href="{% url 'finanzas_comercial:deal_create' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
+      Crear negocio
+    </a>
+  </div>
+</div>
+
+<!-- Selector de columnas + limpiar filtros excel -->
+<div class="flex flex-wrap items-center justify-between gap-3 mt-4 mb-3">
+  <details class="relative">
+    <summary class="cursor-pointer text-sm text-slate-700 px-3 py-1 border rounded-full bg-white hover:bg-slate-50 select-none">
+      ⚙️ Columnas
+    </summary>
+    <div id="columnToggles" class="absolute left-0 mt-1 w-64 bg-white border rounded-xl shadow-lg p-3 z-10">
+      <p class="text-xs text-slate-500 mb-2">Mostrar / ocultar columnas</p>
+
+      <label class="flex items-center gap-2 mb-2 pb-2 border-b">
+        <input type="checkbox" id="col-toggle-all" checked>
+        <span class="font-semibold text-xs">Mostrar todas</span>
+      </label>
+
+      <div class="space-y-1 text-sm">
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="0" checked> <span>Nombre</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="1" checked> <span>Etapa</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="2" checked> <span>Fecha cierre</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="3" checked> <span>Propietario</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="4" checked> <span>Valor</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="5" checked> <span>Empresa</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="6" checked> <span>Sin analizar</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="7" checked> <span>Analizados</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="8" checked> <span>Acción</span></label>
+      </div>
+    </div>
+  </details>
+
+  <button type="button" id="btnExcelClearAll"
+          class="px-3 py-1 text-xs border rounded-full bg-white hover:bg-blue-50">
+    ❌ Limpiar filtros
+  </button>
+</div>
+
+<div id="zonaTabla">
+  <div class="rounded-2xl border border-slate-200 tabla-responsive">
+    <table id="tabla-deals" class="table-auto w-full text-sm">
+      <thead class="bg-slate-100 text-slate-800 font-semibold text-center">
+        <tr>
+          <th class="p-3 border-b border-slate-200 text-left" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1 justify-start">
+              <span>Nombre del negocio</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Etapa</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Fecha de cierre</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Propietario</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Valor</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200 text-left" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1 justify-start">
+              <span>Negocio → Empresas</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Archivos sin analizar</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Archivos analizados</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+
+          <th class="p-3 border-b border-slate-200 text-right">Acción</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-slate-100">
+        {% for d in pagina %}
+        <tr class="hover:bg-slate-50">
+          <!-- Nombre -->
+          <td class="px-4 py-3 font-semibold text-slate-900 text-left cell-wrap min-w-[260px]"
+              data-excel-value="{{ d.name|default:'' }}">
+            {{ d.name }}
+          </td>
+
+          <!-- Etapa (select rápido, pero filtrable por nombre) -->
+          <td class="px-4 py-3 text-slate-700 text-center"
+              data-excel-value="{% if d.stage %}{{ d.stage.name }}{% endif %}">
+            <form method="post" class="inline-flex items-center gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="quick_stage">
+              <input type="hidden" name="deal_id" value="{{ d.id }}">
+
+              <select name="stage_id"
+                      class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-sm"
+                      onchange="this.form.submit()">
+                {% for s in stages %}
+                  <option value="{{ s.id }}" {% if d.stage_id == s.id %}selected{% endif %}>
+                    {{ s.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+
+          <!-- Fecha cierre -->
+          <td class="px-4 py-3 text-slate-700 text-center"
+              data-excel-value="{% if d.close_at %}{{ d.close_at|date:'d-m-Y H:i' }}{% endif %}">
+            {% if d.close_at %}{{ d.close_at|date:"d-m-Y H:i" }}{% else %}--{% endif %}
+          </td>
+
+          <!-- Propietario -->
+          <td class="px-4 py-3 text-slate-700 text-center"
+              data-excel-value="{% if d.owner %}{{ d.owner.email }}{% endif %}">
+            {% if d.owner %}{{ d.owner.get_full_name|default:d.owner.email }}{% else %}--{% endif %}
+          </td>
+
+          <!-- Valor -->
+          <td class="px-4 py-3 text-slate-700 text-center"
+              data-excel-value="{{ d.value|default:0 }}">
+            $ {{ d.value|floatformat:0|intcomma }} CLP
+          </td>
+
+          <!-- Empresa -->
+          <td class="px-4 py-3 text-slate-700 text-left"
+              data-excel-value="{% if d.company %}{{ d.company.name }}{% endif %}">
+            {% if d.company %}
+              <div class="flex items-center gap-2">
+                {% if d.company.logo %}
+                  <img src="{{ d.company.logo.url }}" class="w-7 h-7 rounded-lg object-cover border border-slate-200" alt="Logo">
+                {% else %}
+                  <div class="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                    {{ d.company.name|slice:":2"|upper }}
+                  </div>
+                {% endif %}
+                <span class="font-semibold text-slate-900">{{ d.company.name }}</span>
+              </div>
+            {% else %}
+              --
+            {% endif %}
+          </td>
+
+          <!-- Sin analizar -->
+          <td class="px-4 py-3 text-slate-700 text-center"
+              data-excel-value="{{ d.initial_count|default:0 }}">
+            {% if d.initial_count and d.initial_count > 0 %}
+              <div class="space-y-1 text-left">
+                {% for a in d.initial_files|slice:":3" %}
+                  <div class="text-xs">
+                    <a class="text-blue-700 hover:underline" target="_blank" href="{{ a.file.url }}">
+                      {{ a.original_name|default:a.file.name }}
+                    </a>
+                  </div>
+                {% endfor %}
+                {% if d.initial_count > 3 %}
+                  <div class="text-[11px] text-slate-500">+{{ d.initial_count|add:"-3" }} más</div>
+                {% endif %}
+              </div>
+            {% else %}
+              <span class="text-slate-400 text-sm">--</span>
+            {% endif %}
+          </td>
+
+          <!-- Analizados -->
+          <td class="px-4 py-3 text-slate-700 text-center"
+              data-excel-value="{{ d.analyzed_count|default:0 }}">
+            {% if d.analyzed_count and d.analyzed_count > 0 %}
+              <div class="space-y-1 text-left">
+                {% for a in d.analyzed_files|slice:":3" %}
+                  <div class="text-xs">
+                    <a class="text-blue-700 hover:underline" target="_blank" href="{{ a.file.url }}">
+                      {{ a.original_name|default:a.file.name }}
+                    </a>
+                  </div>
+                {% endfor %}
+
+                {% if d.analyzed_count > 3 %}
+                  <div class="text-[11px] text-slate-500">+{{ d.analyzed_count|add:"-3" }} más</div>
+                {% endif %}
+
+                <a class="inline-flex items-center mt-1 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-semibold"
+                   href="{% url 'finanzas_comercial:deal_analysis_upload' d.id %}?next={{ request.get_full_path|urlencode }}">
+                  Cargar más
+                </a>
+              </div>
+            {% else %}
+              <a class="inline-flex items-center px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-semibold"
+                 href="{% url 'finanzas_comercial:deal_analysis_upload' d.id %}?next={{ request.get_full_path|urlencode }}">
+                Cargar análisis
+              </a>
+            {% endif %}
+          </td>
+
+          <!-- Acción -->
+          <td class="px-4 py-3 text-right">
+            <div class="inline-flex items-center gap-2 justify-end">
+              <a href="{% url 'finanzas_comercial:deal_edit' d.id %}"
+                 class="inline-flex items-center px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+                Editar
+              </a>
+
+              {% if can_delete %}
+                <button type="button"
+                  class="inline-flex items-center px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold shadow-sm"
+                  data-open-delete="1"
+                  data-delete-url="{% url 'finanzas_comercial:deal_delete' d.id %}"
+                  data-name="{{ d.name|escape }}">
+                  Eliminar
+                </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="p-6 text-center text-slate-500">No hay negocios.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación + cantidad -->
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+    <form id="formCantidad" class="flex items-center gap-2" method="get">
+      <label class="text-sm font-semibold text-slate-700">Mostrar:</label>
+      <select name="cantidad" id="cantidad" class="border rounded-xl px-3 py-2 bg-white">
+        <option value="5"   {% if cantidad == '5' %}selected{% endif %}>5</option>
+        <option value="10"  {% if cantidad == '10' %}selected{% endif %}>10</option>
+        <option value="20"  {% if cantidad == '20' %}selected{% endif %}>20</option>
+        <option value="50"  {% if cantidad == '50' %}selected{% endif %}>50</option>
+        <option value="100" {% if cantidad == '100' %}selected{% endif %}>100</option>
+      </select>
+      {% if show_stages %}
+        <input type="hidden" name="stages" value="1">
+      {% endif %}
+    </form>
+
+    <div class="text-slate-600">
+      Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}
+    </div>
+
+    <div class="flex items-center gap-2">
+      {% if pagina.has_previous %}
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page=1">« Primero</a>
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page={{ pagina.previous_page_number }}">‹ Anterior</a>
+      {% endif %}
+      {% if pagina.has_next %}
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page={{ pagina.next_page_number }}">Siguiente ›</a>
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page={{ pagina.paginator.num_pages }}">Último »</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Panel flotante tipo Excel -->
+<div id="excelFilterPanel" class="excel-panel hidden">
+  <h3 id="excelPanelTitle">Columna</h3>
+  <small>Filtrar valores</small>
+
+  <div class="mt-2">
+    <input id="excelFilterSearch" type="text" placeholder="Buscar..."
+           class="w-full border border-slate-300 rounded-md px-2 py-1 text-xs">
+  </div>
+
+  <div class="mt-2 excel-options" id="excelFilterOptions"></div>
+
+  <div class="mt-3 flex justify-end gap-2">
+    <button type="button" id="excelFilterClearAll" class="px-2 py-1 border rounded-md text-xs">
+      Limpiar
+    </button>
+    <button type="button" id="excelFilterApply" class="px-2 py-1 bg-blue-600 text-white rounded-md text-xs">
+      Aplicar
+    </button>
+  </div>
+</div>
+
+<!-- MODAL ELIMINAR NEGOCIO -->
+<div id="deleteModal" class="fixed inset-0 z-[60] hidden">
+  <div id="deleteOverlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]"></div>
+  <div class="relative w-full h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+      <div class="p-5">
+        <div class="text-lg font-extrabold text-slate-900">Eliminar negocio</div>
+        <div class="text-sm text-slate-600 mt-1">
+          ¿Seguro que deseas eliminar <b id="deleteName">este negocio</b>? Esta acción no se puede deshacer.
+        </div>
+
+        <form id="deleteForm" method="post" class="mt-5">
+          {% csrf_token %}
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" id="btnCancelDelete"
+                    class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+              Cancelar
+            </button>
+            <button type="submit"
+                    class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold shadow-sm">
+              Sí, eliminar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR ETAPA -->
+<div id="stageModal" class="fixed inset-0 z-[60] hidden">
+  <div id="stageOverlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]"></div>
+  <div class="relative w-full h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+      <div class="p-5">
+        <div class="text-lg font-extrabold text-slate-900">Editar etapa</div>
+
+        <form id="stageForm" method="post" class="mt-4 space-y-3">
+          {% csrf_token %}
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Nombre</label>
+            <input id="stageName" name="name" required
+                   class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Orden</label>
+              <input id="stageOrder" name="sort_order" type="number"
+                     class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200">
+            </div>
+            <div class="flex items-end">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                <input id="stageActive" type="checkbox" name="is_active" class="rounded border-slate-300">
+                Activa
+              </label>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" id="btnCancelStage"
+                    class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+              Cancelar
+            </button>
+            <button type="submit"
+                    class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold">
+              Guardar
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const table = document.getElementById('tabla-deals');
+  if(!table) return;
+
+  /* ================== Column visibility ================== */
+  const COL_KEY = 'dealCols:' + location.pathname;
+
+  function loadColsState(){
+    try{ return JSON.parse(localStorage.getItem(COL_KEY) || '{}') || {}; }catch(_){ return {}; }
+  }
+  function saveColsState(state){
+    try{ localStorage.setItem(COL_KEY, JSON.stringify(state)); }catch(_){}
+  }
+  function applyColumnVisibility(){
+    const state = loadColsState();
+    const headerCells = table.querySelectorAll('thead tr th');
+    headerCells.forEach((th, idx)=>{
+      const visible = state[idx] !== false;
+      th.style.display = visible ? '' : 'none';
+    });
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+      const tds = tr.querySelectorAll('td');
+      tds.forEach((td, idx)=>{
+        const visible = state[idx] !== false;
+        td.style.display = visible ? '' : 'none';
+      });
+    });
+
+    const panel = document.getElementById('columnToggles');
+    if(panel){
+      const checks = panel.querySelectorAll('.col-toggle');
+      const master = panel.querySelector('#col-toggle-all');
+      let allOn = true;
+      checks.forEach(cb=>{
+        const idx = parseInt(cb.dataset.col || '0', 10);
+        const visible = state[idx] !== false;
+        cb.checked = visible;
+        if(!visible) allOn = false;
+      });
+      if(master) master.checked = allOn;
+    }
+  }
+
+  function engancharColumnToggles(){
+    const panel = document.getElementById('columnToggles');
+    if(!panel) return;
+
+    const checks = panel.querySelectorAll('.col-toggle');
+    const master = panel.querySelector('#col-toggle-all');
+
+    checks.forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        const idx = parseInt(cb.dataset.col || '0', 10);
+        const state = loadColsState();
+        state[idx] = cb.checked;
+        saveColsState(state);
+        applyColumnVisibility();
+      });
+    });
+
+    if(master){
+      master.addEventListener('change', ()=>{
+        const state = loadColsState();
+        const val = master.checked;
+        checks.forEach(cb=>{
+          const idx = parseInt(cb.dataset.col || '0', 10);
+          cb.checked = val;
+          state[idx] = val;
+        });
+        saveColsState(state);
+        applyColumnVisibility();
+      });
+    }
+  }
+
+  function initColumnsDropdown(){
+    const details = document.querySelector('details.relative');
+    if(!details) return;
+    document.addEventListener('click', (e)=>{
+      if(!details.open) return;
+      if(details.contains(e.target)) return;
+      details.open = false;
+    });
+  }
+
+  /* ================== Excel filters (client-side) ================== */
+  const excel = {
+    panel: document.getElementById('excelFilterPanel'),
+    titleEl: document.getElementById('excelPanelTitle'),
+    searchInput: document.getElementById('excelFilterSearch'),
+    optsBox: document.getElementById('excelFilterOptions'),
+    btnApply: document.getElementById('excelFilterApply'),
+    btnClearAll: document.getElementById('excelFilterClearAll'),
+    headers: Array.from(table.querySelectorAll('thead th')),
+    allRows: Array.from(table.querySelector('tbody').rows),
+    distinctValues: {},
+    activeFilters: loadExcelFilters(),
+    currentColIndex: null,
+    panelEventsBound: false
+  };
+
+  function loadExcelFilters(){
+    try{
+      const key = 'dealExcelFilters:' + location.pathname;
+      const raw = sessionStorage.getItem(key);
+      if(!raw) return {};
+      const obj = JSON.parse(raw);
+      const result = {};
+      Object.entries(obj).forEach(([col, arr])=> result[col] = new Set(arr));
+      return result;
+    }catch(_){ return {}; }
+  }
+
+  function saveExcelFilters(active){
+    try{
+      const key = 'dealExcelFilters:' + location.pathname;
+      const plain = {};
+      Object.entries(active).forEach(([col, set])=> plain[col] = Array.from(set));
+      sessionStorage.setItem(key, JSON.stringify(plain));
+    }catch(_){}
+  }
+
+  function excelGetCellValue(td){
+    if(!td) return '(Vacías)';
+    let text = '';
+    if (td.dataset && td.dataset.excelValue){
+      text = td.dataset.excelValue;
+    } else {
+      text = (td.textContent || '');
+    }
+    text = (text || '').trim();
+    return text || '(Vacías)';
+  }
+
+  function excelBuildDistinctValues(){
+    excel.distinctValues = {};
+    excel.allRows.forEach(row=>{
+      Array.from(row.cells).forEach((td, idx)=>{
+        // última columna “Acción” no se filtra
+        if(idx === 8) return;
+        if(!excel.distinctValues[idx]) excel.distinctValues[idx] = new Set();
+        excel.distinctValues[idx].add(excelGetCellValue(td));
+      });
+    });
+  }
+
+  function excelUpdateHeaderStates(){
+    excel.headers.forEach((th, idx)=>{
+      if(!th.hasAttribute('data-excel-col')) return;
+      const hasFilter = !!(excel.activeFilters[idx] && excel.activeFilters[idx].size > 0);
+      th.classList.toggle('excel-col-filtered', hasFilter);
+    });
+  }
+
+  function excelApplyFilters(){
+    excel.allRows.forEach(row=>{
+      let visible = true;
+      for (const [colIndexStr, values] of Object.entries(excel.activeFilters)){
+        const idx = parseInt(colIndexStr, 10);
+        if(!values || values.size === 0) continue;
+        const cell = row.cells[idx];
+        const text = excelGetCellValue(cell);
+        if(!values.has(text)){
+          visible = false;
+          break;
+        }
+      }
+      row.style.display = visible ? '' : 'none';
+    });
+    excelUpdateHeaderStates();
+    saveExcelFilters(excel.activeFilters);
+  }
+
+  function excelRenderOptions(colIndex){
+    excel.optsBox.innerHTML = '';
+    const valuesSet = excel.distinctValues[colIndex] || new Set();
+    const values = Array.from(valuesSet).sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
+    const selected = excel.activeFilters[colIndex];
+
+    const allLabel = document.createElement('label');
+    allLabel.className = 'flex items-center gap-1 mb-1 text-xs';
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = !selected || selected.size === values.length;
+    allCb.addEventListener('change', ()=>{
+      excel.optsBox.querySelectorAll('input[type="checkbox"][data-value]').forEach(cb=> cb.checked = allCb.checked);
+    });
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(' (Seleccionar todo)'));
+    excel.optsBox.appendChild(allLabel);
+
+    values.forEach(val=>{
+      const label = document.createElement('label');
+      label.className = 'flex items-center gap-1 text-xs mt-0.5';
+      label.dataset.optionLabel = '1';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.dataset.value = val;
+      cb.checked = !selected || selected.has(val);
+
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + val));
+      excel.optsBox.appendChild(label);
+    });
+  }
+
+  function excelFilterOptionList(query){
+    const q = query.trim().toLowerCase();
+    excel.optsBox.querySelectorAll('label[data-option-label]').forEach(lbl=>{
+      lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  function excelOpenForHeader(th){
+    excel.currentColIndex = parseInt(th.dataset.excelIndex, 10);
+    excel.titleEl.textContent = th.innerText.trim();
+
+    excelBuildDistinctValues();
+    excelRenderOptions(excel.currentColIndex);
+
+    const rect = th.getBoundingClientRect();
+    const panelWidth = 260;
+    let left = rect.left + (rect.width - panelWidth) / 2;
+    let top  = rect.bottom + 4;
+    left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
+    excel.panel.style.left = left + 'px';
+    excel.panel.style.top  = top + 'px';
+
+    excel.panel.classList.remove('hidden');
+    excel.searchInput.value = '';
+    excelFilterOptionList('');
+    excel.searchInput.focus();
+  }
+
+  function excelBindPanelEventsOnce(){
+    if(excel.panelEventsBound) return;
+
+    excel.searchInput.addEventListener('input', ()=> excelFilterOptionList(excel.searchInput.value));
+
+    excel.btnApply.addEventListener('click', ()=>{
+      const idx = excel.currentColIndex;
+      if(idx == null){ excel.panel.classList.add('hidden'); return; }
+
+      const checks = excel.optsBox.querySelectorAll('input[type="checkbox"][data-value]');
+      const selected = new Set();
+      checks.forEach(cb=>{ if(cb.checked) selected.add(cb.dataset.value); });
+
+      const fullSet = excel.distinctValues[idx] || new Set();
+      if(selected.size === 0 || selected.size === fullSet.size){
+        delete excel.activeFilters[idx];
+      }else{
+        excel.activeFilters[idx] = selected;
+      }
+      excelApplyFilters();
+      excel.panel.classList.add('hidden');
+    });
+
+    excel.btnClearAll.addEventListener('click', ()=>{
+      const idx = excel.currentColIndex;
+      if(idx == null){ excel.panel.classList.add('hidden'); return; }
+      delete excel.activeFilters[idx];
+      excelApplyFilters();
+      excel.panel.classList.add('hidden');
+    });
+
+    document.addEventListener('click', (e)=>{
+      if(excel.panel.classList.contains('hidden')) return;
+      if(excel.panel.contains(e.target)) return;
+      if(e.target.closest('.excel-header-btn')) return;
+      excel.panel.classList.add('hidden');
+    });
+
+    excel.panelEventsBound = true;
+  }
+
+  function initExcelFilters(){
+    excelBindPanelEventsOnce();
+    excel.headers.forEach((th, idx)=>{
+      if(th.hasAttribute('data-excel-col')){
+        th.dataset.excelIndex = idx;
+        const btn = th.querySelector('.excel-header-btn');
+        if(btn){
+          btn.addEventListener('click', (ev)=>{
+            ev.stopPropagation();
+            excelOpenForHeader(th);
+          });
+        }
+      }
+    });
+    excelBuildDistinctValues();
+    excelApplyFilters();
+  }
+
+  function excelClearAll(){
+    excel.activeFilters = {};
+    excelApplyFilters();
+    excel.panel.classList.add('hidden');
+  }
+
+  const btnExcelClearAll = document.getElementById('btnExcelClearAll');
+  if(btnExcelClearAll){
+    btnExcelClearAll.addEventListener('click', (e)=>{
+      e.preventDefault();
+      excelClearAll();
+    });
+  }
+
+  /* ================== cantidad por página ================== */
+  const formCantidad = document.getElementById('formCantidad');
+  const selCantidad = document.getElementById('cantidad');
+  if(formCantidad && selCantidad){
+    selCantidad.addEventListener('change', ()=> formCantidad.submit());
+  }
+
+  /* ================== delete modal ================== */
+  const modal = document.getElementById("deleteModal");
+  const overlay = document.getElementById("deleteOverlay");
+  const btnCancel = document.getElementById("btnCancelDelete");
+  const form = document.getElementById("deleteForm");
+  const nameEl = document.getElementById("deleteName");
+
+  function openDelete(url, name){
+    if (nameEl) nameEl.textContent = name || "este negocio";
+    if (form) form.setAttribute("action", url || "#");
+    modal.classList.remove("hidden");
+    document.body.classList.add("overflow-hidden");
+  }
+  function closeDelete(){
+    modal.classList.add("hidden");
+    document.body.classList.remove("overflow-hidden");
+    if (form) form.setAttribute("action", "#");
+  }
+
+  document.querySelectorAll("[data-open-delete='1']").forEach((btn)=>{
+    btn.addEventListener("click", ()=>{
+      openDelete(btn.getAttribute("data-delete-url"), btn.getAttribute("data-name"));
+    });
+  });
+
+  overlay && overlay.addEventListener("click", closeDelete);
+  btnCancel && btnCancel.addEventListener("click", closeDelete);
+
+  document.addEventListener("keydown", (e)=>{
+    if (e.key === "Escape"){
+      if (modal && !modal.classList.contains("hidden")) closeDelete();
+    }
+  });
+
+  /* ================== Init ================== */
+  engancharColumnToggles();
+  initColumnsDropdown();
+  applyColumnVisibility();
+  initExcelFilters();
+})();
+</script>
+
+{% endblock %}

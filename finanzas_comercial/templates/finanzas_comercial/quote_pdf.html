@@ -1,0 +1,374 @@
+{# finanzas_comercial/quote_pdf.html #}
+{% load static %}
+{% load l10n %}
+{% load money_cl %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4; margin: 18mm; }
+
+    body{
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      color:#111;
+    }
+
+    .header{
+      display:flex;
+      align-items:flex-start;
+      gap:14px;
+      margin-bottom: 10px;
+    }
+
+    .logo{
+      border: 0;
+      display:block;
+      object-fit: contain;
+    }
+
+    .title-wrap{
+      flex:1;
+      text-align:center;
+      padding-top: 30px;
+    }
+
+    h1{
+      font-size: 20px;
+      margin: 0;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .two-cols{
+      display:flex;
+      gap:18px;
+      margin-top: 10px;
+    }
+
+    .col{ flex:1; }
+
+    .company{
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .muted{ color:#666; }
+    .line{ margin: 2px 0; }
+
+    .meta{
+      margin-top: 10px;
+      display:flex;
+      gap:18px;
+    }
+    .meta .col{ flex:1; }
+
+    .label{ font-weight:700; }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 11px;
+    }
+    th, td{
+      border: 1px solid #cfcfcf;
+      padding: 7px 8px;
+      vertical-align: top;
+    }
+    th{
+      background:#efefef;
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: .2px;
+    }
+
+    .right{ text-align:right; }
+    .center{ text-align:center; }
+
+    .section-row td{
+      background:#efefef;
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: .2px;
+    }
+
+    .summary-box{
+      width: 340px;
+      margin-left: auto;
+      margin-top: 10px;
+      border:1px solid #cfcfcf;
+      border-collapse: collapse;
+    }
+    .summary-box td{
+      border:1px solid #cfcfcf;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+    .summary-box .sum-label{ font-weight: 800; }
+    .summary-box .sum-val{
+      font-weight: 800;
+      text-align:right;
+    }
+
+    .comments{
+      margin-top: 14px;
+      border: 1px solid #cfcfcf;
+      padding: 10px;
+    }
+    .comments .comments-title{
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .nowrap{ white-space:nowrap; }
+  </style>
+</head>
+
+<body>
+
+  {% localize off %}
+
+  {# ===== HEADER (logo + título centrado) ===== #}
+  <div class="header">
+    <div style="width:90px;">
+      {% if company.logo_static %}
+        <img class="logo"
+             src="{{ request.scheme }}://{{ request.get_host }}{% static company.logo_static %}"
+             alt="Logo"
+             style="width: {{ company.logo_w|default:86 }}px; height: {{ company.logo_h|default:86 }}px;">
+      {% endif %}
+    </div>
+
+    <div class="title-wrap">
+      <h1>{{ quote.title }}</h1>
+    </div>
+
+    <div style="width:90px;"></div>
+  </div>
+
+  {# ===== CONTACTO (izq) / EMPRESA (der) ===== #}
+  <div class="two-cols">
+    <div class="col">
+      {% if contacts %}
+        {% for c in contacts %}
+          <div class="line"><b>{{ c.full_name|default:c }}</b></div>
+          {% if c.email %}<div class="line">{{ c.email }}</div>{% endif %}
+          {% if c.phone %}<div class="line">{{ c.phone }}</div>{% endif %}
+          {% if c.telefono %}<div class="line">{{ c.telefono }}</div>{% endif %}
+          {% if c.company %}<div class="line">{{ c.company.name }}</div>{% endif %}
+          {% if not forloop.last %}<div class="line">&nbsp;</div>{% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="line muted">Sin contactos asociados.</div>
+      {% endif %}
+    </div>
+
+    <div class="col">
+      <div class="company">{{ company.name }}</div>
+      <div class="line">{{ company.address_1 }}</div>
+      {% if company.address_2 %}<div class="line">{{ company.address_2 }}</div>{% endif %}
+      <div class="line">{{ company.city }}</div>
+      <div class="line">{{ company.country }}</div>
+
+      <div class="line" style="margin-top:8px;">
+        <span class="label">Preparado por:</span> {{ company.prepared_name }}
+      </div>
+      {% if company.prepared_role %}<div class="line">{{ company.prepared_role }}</div>{% endif %}
+      {% if company.prepared_email %}<div class="line">{{ company.prepared_email }}</div>{% endif %}
+      {% if company.prepared_phone %}<div class="line">{{ company.prepared_phone }}</div>{% endif %}
+      {% if company.website %}<div class="line">{{ company.website }}</div>{% endif %}
+    </div>
+  </div>
+
+  {# ===== META ===== #}
+  <div class="meta">
+    <div class="col">
+      <div class="line">
+        <span class="label">Referencia:</span>
+        {% if quote.pdf_reference %}{{ quote.pdf_reference }}{% else %}COT-{{ quote.id }}{% endif %}
+      </div>
+
+      <div class="line">
+        <span class="label">Creación del presupuesto:</span>
+        {% if quote.created_at %}{{ quote.created_at|date:"j \\d\\e F \\d\\e Y" }}{% else %}-{% endif %}
+      </div>
+
+      <div class="line">
+        <span class="label">Caducidad del presupuesto:</span>
+        {% if quote.expires_at %}{{ quote.expires_at|date:"j \\d\\e F \\d\\e Y" }}{% else %}-{% endif %}
+      </div>
+
+      <div class="line"><span class="label">Moneda:</span> {{ currency_code }}</div>
+    </div>
+    <div class="col"></div>
+  </div>
+
+  {# ===== TABLA PRODUCTOS Y SERVICIOS ===== #}
+  <table>
+    <thead>
+      <tr>
+        <th>PRODUCTOS Y SERVICIOS</th>
+        <th class="center nowrap" style="width:110px;">CANTIDAD</th>
+        <th class="center nowrap" style="width:120px;">DESC %</th>
+        <th class="right nowrap" style="width:160px;">PRECIO</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% if lines %}
+        {% for ln in lines %}
+          {% if ln.title %}
+          <tr>
+            <td>{{ ln.title }}</td>
+
+            <td class="center">
+              {% if ln.qty %}
+                {{ ln.qty|floatformat:2|localize }}
+              {% else %}
+                0
+              {% endif %}
+            </td>
+
+            <td class="center">
+              {% if ln.discount_pct %}
+                {{ ln.discount_pct|floatformat:2|localize }} %
+              {% else %}
+                0 %
+              {% endif %}
+
+              {% if ln.line_discount and ln.line_discount > 0 %}
+                <div class="muted" style="margin-top:2px;">
+                  - {{ currency_symbol }}
+                  {% if currency_decimals == 0 %}
+                    {{ ln.line_discount|money_cl:0 }}
+                  {% else %}
+                    {{ ln.line_discount|money_cl:2 }}
+                  {% endif %}
+                </div>
+              {% endif %}
+            </td>
+
+            <td class="right">
+              {{ currency_symbol }}
+              {% if currency_decimals == 0 %}
+                {{ ln.line_total|money_cl:0 }}
+              {% else %}
+                {{ ln.line_total|money_cl:2 }}
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="4" class="muted">Sin líneas.</td>
+        </tr>
+      {% endif %}
+
+      <tr class="section-row">
+        <td colspan="4">RESUMEN</td>
+      </tr>
+
+      <tr>
+        <td colspan="3">
+          <b>Subtotal</b> Por única vez
+          {% if lines_discount_total and lines_discount_total > 0 %}
+            <div class="muted" style="margin-top:2px;">
+              Descuentos aplicados en líneas:
+              - {{ currency_symbol }}
+              {% if currency_decimals == 0 %}
+                {{ lines_discount_total|money_cl:0 }}
+              {% else %}
+                {{ lines_discount_total|money_cl:2 }}
+              {% endif %}
+            </div>
+          {% endif %}
+        </td>
+
+        <td class="right">
+          {{ currency_symbol }}
+          {% if currency_decimals == 0 %}
+            {{ subtotal_net|money_cl:0 }}
+          {% else %}
+            {{ subtotal_net|money_cl:2 }}
+          {% endif %}
+        </td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  {# ===== CUADRO derecha ===== #}
+  <table class="summary-box">
+    <tr>
+      <td class="sum-label">Subtotal</td>
+      <td class="sum-val">
+        {{ currency_symbol }}
+        {% if currency_decimals == 0 %}
+          {{ subtotal_net|money_cl:0 }}
+        {% else %}
+          {{ subtotal_net|money_cl:2 }}
+        {% endif %}
+      </td>
+    </tr>
+
+    {% if extra_discount_pct and extra_discount_pct > 0 %}
+      <tr>
+        <td class="sum-label">
+          {% if extra_discount_name %}{{ extra_discount_name }}{% else %}Descuento extra{% endif %}
+          ({{ extra_discount_pct|floatformat:2|localize }}%)
+        </td>
+        <td class="sum-val">
+          - {{ currency_symbol }}
+          {% if currency_decimals == 0 %}
+            {{ extra_discount_amount|money_cl:0 }}
+          {% else %}
+            {{ extra_discount_amount|money_cl:2 }}
+          {% endif %}
+        </td>
+      </tr>
+    {% endif %}
+
+    <tr>
+      <td class="sum-label">Total</td>
+      <td class="sum-val">
+        {{ currency_symbol }}
+        {% if currency_decimals == 0 %}
+          {{ total_final|money_cl:0 }}
+        {% else %}
+          {{ total_final|money_cl:2 }}
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  {# ===== COMENTARIOS ===== #}
+  <div class="comments">
+    <div class="comments-title">Comentarios</div>
+    {% if quote.comments %}
+      <div>{{ quote.comments|linebreaksbr }}</div>
+    {% else %}
+      <div class="muted">-</div>
+    {% endif %}
+  </div>
+
+  {# ===== CONDICIONES DE COMPRA ===== #}
+  <div class="comments">
+    <div class="comments-title">Condiciones de compra</div>
+    {% if quote.purchase_conditions %}
+      <div>{{ quote.purchase_conditions|linebreaksbr }}</div>
+    {% else %}
+      <div class="muted">-</div>
+    {% endif %}
+  </div>
+
+  {% endlocalize %}
+
+</body>
+</html>

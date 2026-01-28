@@ -1,0 +1,181 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - Finanzas Comercial{% endblock %}
+
+{% block dashboard_content %}
+
+<style>
+  .mv-form input[type="text"],
+  .mv-form input[type="email"],
+  .mv-form input[type="url"],
+  .mv-form input[type="tel"],
+  .mv-form input[type="number"],
+  .mv-form input[type="password"],
+  .mv-form select,
+  .mv-form textarea {
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgb(226 232 240);
+    background: #fff;
+    color: rgb(15 23 42);
+    outline: none;
+    transition: box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
+  }
+  .mv-form input:focus,
+  .mv-form select:focus,
+  .mv-form textarea:focus {
+    border-color: rgb(59 130 246);
+    box-shadow: 0 0 0 4px rgba(59,130,246,.18);
+  }
+  .mv-form input[type="checkbox"]{
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border: 1px solid rgb(203 213 225);
+    accent-color: rgb(37 99 235);
+  }
+  .mv-form .field-error input,
+  .mv-form .field-error select,
+  .mv-form .field-error textarea {
+    border-color: rgb(239 68 68);
+    box-shadow: 0 0 0 4px rgba(239,68,68,.12);
+  }
+</style>
+
+<div class="max-w-[900px] mx-auto">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-extrabold text-slate-900">{{ title }}</h1>
+      <p class="text-slate-500 text-sm">Completa los datos del contacto.</p>
+    </div>
+    <a href="{% url 'finanzas_comercial:contact_list' %}"
+       class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+      Volver
+    </a>
+  </div>
+
+  <div class="mt-4 bg-white border border-slate-200 rounded-2xl p-5">
+    <!-- ✅ multipart para archivos -->
+    <form method="post" enctype="multipart/form-data" class="mv-form space-y-4">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div class="{% if form.first_name.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">Nombre</label>
+          {{ form.first_name }}
+          {% if form.first_name.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.first_name.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="{% if form.last_name.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">Apellido</label>
+          {{ form.last_name }}
+          {% if form.last_name.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.last_name.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="{% if form.email.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">Correo</label>
+          {{ form.email }}
+          {% if form.email.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.email.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="{% if form.phone.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">Número de teléfono</label>
+          {{ form.phone }}
+          {% if form.phone.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.phone.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="{% if form.company.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">Empresa</label>
+          {{ form.company }}
+          {% if form.company.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.company.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="{% if form.job_title.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">Cargo</label>
+          {{ form.job_title }}
+          {% if form.job_title.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.job_title.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="{% if form.owner.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">Propietario del contacto (solo Comercial)</label>
+          {{ form.owner }}
+          {% if form.owner.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.owner.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="{% if form.linkedin_url.errors %}field-error{% endif %}">
+          <label class="text-xs font-semibold text-slate-600">LinkedIn</label>
+          {{ form.linkedin_url }}
+          {% if form.linkedin_url.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.linkedin_url.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <!-- ✅ Logo -->
+        <div class="md:col-span-2">
+          <label class="text-xs font-semibold text-slate-600">Logo del contacto (opcional)</label>
+
+          <div class="mt-2 flex items-center gap-3">
+            {% if form.instance and form.instance.logo %}
+              <img src="{{ form.instance.logo.url }}" class="w-12 h-12 rounded-xl object-cover border border-slate-200" alt="Logo contacto">
+              <div class="text-xs text-slate-600">
+                Logo actual del contacto. Si subes uno nuevo, lo reemplaza.
+              </div>
+            {% elif form.instance and form.instance.company and form.instance.company.logo %}
+              <img src="{{ form.instance.company.logo.url }}" class="w-12 h-12 rounded-xl object-cover border border-slate-200" alt="Logo empresa">
+              <div class="text-xs text-slate-600">
+                Este contacto no tiene logo propio. Se usará el logo de la empresa como fallback.
+              </div>
+            {% else %}
+              <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                MV
+              </div>
+              <div class="text-xs text-slate-600">
+                Sin logo. Puedes subir uno si quieres.
+              </div>
+            {% endif %}
+          </div>
+
+          <input type="file" name="logo" accept="image/*"
+                 class="mt-2 w-full px-3 py-2 rounded-xl border border-slate-200 bg-white">
+          {% if form.logo.errors %}
+            <div class="text-xs text-red-600 mt-1">{{ form.logo.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center gap-2 pt-2 md:col-span-2">
+          {{ form.is_active }}
+          <label class="text-sm font-semibold text-slate-700">Activo</label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <a href="{% url 'finanzas_comercial:contact_list' %}"
+           class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+          Cancelar
+        </a>
+        <button class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
+          Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

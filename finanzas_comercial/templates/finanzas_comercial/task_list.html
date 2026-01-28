@@ -1,0 +1,950 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Tareas - Finanzas Comercial{% endblock %}
+
+{% block dashboard_content %}
+<div class="w-full mx-auto bg-white p-6 rounded-2xl shadow mt-6">
+
+<style>
+  .tabla-responsive{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    width:100%;
+  }
+  .tabla-responsive table{
+    min-width: 1400px; /* ✅ evita “amorchado” */
+    white-space: nowrap;
+  }
+  .cell-wrap{
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  /* ===== Excel header filter ===== */
+  .excel-header-btn{
+    width:100%;
+    justify-content:center;
+    font-size:0.875rem;
+  }
+  .excel-header-btn .excel-arrow{
+    font-size:0.65rem;
+    margin-left:2px;
+  }
+  .excel-panel{
+    position:fixed;
+    z-index:50;
+    width:260px;
+    background:#fff;
+    border-radius:0.75rem;
+    border:1px solid #d1d5db;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+    padding:0.75rem;
+    font-size:0.8rem;
+  }
+  .excel-panel .excel-options{
+    max-height:180px;
+    overflow-y:auto;
+    border:1px solid #e5e7eb;
+    border-radius:0.5rem;
+    padding:0.25rem 0.5rem;
+    margin-top:0.25rem;
+    background:#f9fafb;
+  }
+  .excel-col-filtered .excel-header-btn{
+    background:#e0f2fe;
+    border-radius:999px;
+  }
+  .excel-col-filtered .excel-arrow{
+    color:#2563eb !important;
+  }
+</style>
+
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <div>
+    <h2 class="text-2xl font-extrabold text-slate-900">Tareas</h2>
+    <p class="text-slate-500 text-sm">Listado de tareas comerciales.</p>
+  </div>
+
+  <a href="{% url 'finanzas_comercial:task_create' %}"
+     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow">
+    Crear tarea
+  </a>
+</div>
+
+
+
+<!-- Selector de columnas + limpiar filtros excel -->
+<div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+  <details class="relative">
+    <summary class="cursor-pointer text-sm text-slate-700 px-3 py-1 border rounded-full bg-white hover:bg-slate-50 select-none">
+      ⚙️ Columnas
+    </summary>
+    <div id="columnToggles" class="absolute left-0 mt-1 w-64 bg-white border rounded-xl shadow-lg p-3 z-10">
+      <p class="text-xs text-slate-500 mb-2">Mostrar / ocultar columnas</p>
+
+      <label class="flex items-center gap-2 mb-2 pb-2 border-b">
+        <input type="checkbox" id="col-toggle-all" checked>
+        <span class="font-semibold text-xs">Mostrar todas</span>
+      </label>
+
+      <div class="space-y-1 text-sm">
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="0" checked> <span>Título</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="1" checked> <span>Estatus</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="2" checked> <span>Comentario</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="3" checked> <span>Asignada a</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="4" checked> <span>Creada por</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="5" checked> <span>Contacto</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="6" checked> <span>Empresa</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="7" checked> <span>Último contacto</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="8" checked> <span>Vencimiento</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="9" checked> <span>Adjuntos</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="col-toggle" data-col="10" checked> <span>Acción</span></label>
+      </div>
+    </div>
+  </details>
+
+  <button type="button" id="btnExcelClearAll"
+          class="px-3 py-1 text-xs border rounded-full bg-white hover:bg-blue-50">
+    ❌ Limpiar filtros
+  </button>
+</div>
+
+<div id="zonaTabla">
+  <div class="rounded-2xl border border-slate-200 tabla-responsive">
+    <table id="tabla-tareas" class="table-auto w-full text-sm">
+      <thead class="bg-slate-100 text-slate-800 font-semibold text-center">
+        <tr>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Título</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Estatus</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Comentario</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Asignada a</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Creada por</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Contacto</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Empresa</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Último contacto</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Vencimiento</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200" data-excel-col>
+            <button type="button" class="excel-header-btn inline-flex items-center gap-1">
+              <span>Adjuntos</span><span class="excel-arrow text-slate-500">▼</span>
+            </button>
+          </th>
+          <th class="p-3 border-b border-slate-200">Acción</th>
+        </tr>
+      </thead>
+
+      <tbody class="text-center">
+        {% for t in pagina %}
+        <tr class="border-b border-slate-100 hover:bg-slate-50">
+          <!-- Título -->
+          <td class="p-3 text-left cell-wrap min-w-[260px]" data-excel-value="{{ t.title|default:'' }}">
+            <div class="font-semibold text-slate-900">#{{ t.id }} - {{ t.title }}</div>
+            {% if t.is_overdue %}
+              <span class="inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                Retrasada
+              </span>
+            {% endif %}
+          </td>
+
+          <!-- Estatus -->
+          <td class="p-3" data-excel-value="{{ t.get_status_display }}">
+  <select
+    class="js-status-select border border-slate-200 rounded-xl px-2 py-1 bg-white text-xs font-semibold"
+    data-action="{% url 'finanzas_comercial:task_update_status' t.id %}"
+    data-current="{{ t.status }}"
+    data-excel-label="{{ t.get_status_display }}"
+  >
+    {% for val, label in status_choices %}
+      <option value="{{ val }}" {% if t.status == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+</td>
+
+          <!-- Comentario -->
+          <td class="p-3 text-left cell-wrap min-w-[240px]" data-excel-value="{{ t.status_comment|default:'' }}">
+            {{ t.status_comment|default:"—" }}
+          </td>
+
+          <!-- Asignada a -->
+          <td class="p-3" data-excel-value="{{ t.assigned_to.email|default:'' }}">
+            {{ t.assigned_to.get_full_name|default:t.assigned_to.email }}
+          </td>
+
+          <!-- Creada por -->
+          <td class="p-3" data-excel-value="{{ t.created_by.email|default:'' }}">
+            {{ t.created_by.get_full_name|default:t.created_by.email }}
+          </td>
+
+          <!-- Contacto -->
+          <td class="p-3" data-excel-value="{% if t.contact_id %}{{ t.contact.full_name }}{% else %}{% endif %}">
+            {% if t.contact_id %}{{ t.contact.full_name }}{% else %}—{% endif %}
+          </td>
+
+          <!-- Empresa -->
+          <td class="p-3" data-excel-value="{% if t.company_id %}{{ t.company.name }}{% else %}{% endif %}">
+            {% if t.company_id %}{{ t.company.name }}{% else %}—{% endif %}
+          </td>
+
+          <!-- Último contacto -->
+          <td class="p-3" data-excel-value="{% if t.last_contact_at %}{{ t.last_contact_at|date:'d-m-Y H:i' }}{% else %}—{% endif %}">
+            {% if t.last_contact_at %}
+              {{ t.last_contact_at|date:"d-m-Y H:i" }}
+            {% else %}—{% endif %}
+          </td>
+
+          <!-- Vencimiento -->
+          <td class="p-3" data-excel-value="{% if t.due_at %}{{ t.due_at|date:'d-m-Y H:i' }}{% else %}—{% endif %}">
+            {% if t.due_at %}
+              {{ t.due_at|date:"d-m-Y H:i" }}
+            {% else %}—{% endif %}
+          </td>
+
+          <!-- Adjuntos -->
+          <td class="p-3" data-excel-value="{% if t.attachments.all %}{% if t.attachments.all|length %}{{ t.attachments.all|length }}{% else %}0{% endif %}{% endif %}">
+            {% with total=t.attachments.all|length %}
+              {% if total %}
+                <div class="flex flex-col items-center gap-1">
+                  {% for a in t.attachments.all|slice:":2" %}
+                    <a href="{{ a.file.url }}" target="_blank" class="text-blue-600 underline text-xs">
+                      📎 {{ a.original_name|default:a.file.name|truncatechars:18 }}
+                    </a>
+                  {% endfor %}
+                  {% if total > 2 %}
+                    <span class="text-xs text-slate-500">+{{ total|add:"-2" }} más</span>
+                  {% endif %}
+                </div>
+              {% else %}
+                —
+              {% endif %}
+            {% endwith %}
+          </td>
+
+          <!-- Acción -->
+          <td class="p-3">
+            <div class="flex items-center justify-center gap-2">
+              <a href="{% url 'finanzas_comercial:task_edit' t.id %}"
+                 class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-semibold">
+                Editar
+              </a>
+              <form method="post" action="{% url 'finanzas_comercial:task_delete' t.id %}" onsubmit="return confirm('¿Eliminar tarea?');">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold">
+                  Eliminar
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="11" class="p-6 text-center text-slate-500">
+            No hay tareas para mostrar.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación + cantidad -->
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+    <form id="formCantidad" class="flex items-center gap-2">
+      <label class="text-sm font-semibold text-slate-700">Mostrar:</label>
+      <select name="cantidad" id="cantidad" class="border rounded-xl px-3 py-2 bg-white">
+        <option value="5"   {% if cantidad == '5' %}selected{% endif %}>5</option>
+        <option value="10"  {% if cantidad == '10' %}selected{% endif %}>10</option>
+        <option value="20"  {% if cantidad == '20' %}selected{% endif %}>20</option>
+        <option value="50"  {% if cantidad == '50' %}selected{% endif %}>50</option>
+        <option value="100" {% if cantidad == '100' %}selected{% endif %}>100</option>
+      </select>
+    </form>
+
+    <div class="text-slate-600">
+      Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}
+    </div>
+
+    <div class="flex items-center gap-2">
+      {% if pagina.has_previous %}
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page=1">« Primero</a>
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page={{ pagina.previous_page_number }}">‹ Anterior</a>
+      {% endif %}
+      {% if pagina.has_next %}
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page={{ pagina.next_page_number }}">Siguiente ›</a>
+        <a class="pg-link px-3 py-2 bg-slate-100 rounded-xl hover:bg-slate-200"
+           href="?{{ base_qs }}&page={{ pagina.paginator.num_pages }}">Último »</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Panel flotante tipo Excel -->
+<div id="excelFilterPanel" class="excel-panel hidden">
+  <h3 id="excelPanelTitle">Columna</h3>
+  <small>Filtrar valores</small>
+
+  <div class="mt-2">
+    <input id="excelFilterSearch" type="text" placeholder="Buscar..."
+           class="w-full border border-slate-300 rounded-md px-2 py-1 text-xs">
+  </div>
+
+  <div class="mt-2 excel-options" id="excelFilterOptions"></div>
+
+  <div class="mt-3 flex justify-end gap-2">
+    <button type="button" id="excelFilterClearAll" class="px-2 py-1 border rounded-md text-xs">
+      Limpiar
+    </button>
+    <button type="button" id="excelFilterApply" class="px-2 py-1 bg-blue-600 text-white rounded-md text-xs">
+      Aplicar
+    </button>
+  </div>
+</div>
+
+<!-- ✅ Modal bonito: comentario estatus (reutilizable) -->
+<div id="statusModal" class="fixed inset-0 z-[120] hidden" aria-hidden="true">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+
+  <!-- Dialog -->
+  <div class="relative min-h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="p-5 border-b border-slate-200">
+        <h3 id="statusModalTitle" class="text-lg font-extrabold text-slate-900">Comentario</h3>
+        <p id="statusModalSubtitle" class="text-sm text-slate-500 mt-1">
+          Agrega un comentario para este cambio de estatus.
+        </p>
+      </div>
+
+      <div class="p-5 space-y-2">
+        <label class="text-xs font-semibold text-slate-600">Comentario</label>
+        <textarea id="statusModalTextarea"
+                  rows="4"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="Escribe aquí..."></textarea>
+
+        <div id="statusModalError" class="hidden text-xs text-red-600">
+          Debes ingresar un comentario.
+        </div>
+      </div>
+
+      <div class="p-5 border-t border-slate-200 flex items-center justify-between gap-3">
+        <button type="button" id="statusModalCancel"
+                class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+          Cancelar
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button type="button" id="statusModalSkip"
+                  class="hidden px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+            Omitir
+          </button>
+
+          <button type="button" id="statusModalConfirm"
+                  class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const zona = document.getElementById('zonaTabla');
+  const table = document.getElementById('tabla-tareas');
+  if(!zona || !table) return;
+
+  /* ================== Column visibility ================== */
+  const COL_KEY = 'taskCols:' + location.pathname;
+
+  function loadColsState(){
+    try{ return JSON.parse(localStorage.getItem(COL_KEY) || '{}') || {}; }catch(_){ return {}; }
+  }
+  function saveColsState(state){
+    try{ localStorage.setItem(COL_KEY, JSON.stringify(state)); }catch(_){}
+  }
+  function applyColumnVisibility(){
+    const state = loadColsState();
+    const headerCells = table.querySelectorAll('thead tr th');
+    headerCells.forEach((th, idx)=>{
+      const visible = state[idx] !== false;
+      th.style.display = visible ? '' : 'none';
+    });
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+      const tds = tr.querySelectorAll('td');
+      tds.forEach((td, idx)=>{
+        const visible = state[idx] !== false;
+        td.style.display = visible ? '' : 'none';
+      });
+    });
+
+    const panel = document.getElementById('columnToggles');
+    if(panel){
+      const checks = panel.querySelectorAll('.col-toggle');
+      const master = panel.querySelector('#col-toggle-all');
+      let allOn = true;
+      checks.forEach(cb=>{
+        const idx = parseInt(cb.dataset.col || '0', 10);
+        const visible = state[idx] !== false;
+        cb.checked = visible;
+        if(!visible) allOn = false;
+      });
+      if(master) master.checked = allOn;
+    }
+  }
+
+  function engancharColumnToggles(){
+    const panel = document.getElementById('columnToggles');
+    if(!panel) return;
+
+    const checks = panel.querySelectorAll('.col-toggle');
+    const master = panel.querySelector('#col-toggle-all');
+
+    checks.forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        const idx = parseInt(cb.dataset.col || '0', 10);
+        const state = loadColsState();
+        state[idx] = cb.checked;
+        saveColsState(state);
+        applyColumnVisibility();
+      });
+    });
+
+    if(master){
+      master.addEventListener('change', ()=>{
+        const state = loadColsState();
+        const val = master.checked;
+        checks.forEach(cb=>{
+          const idx = parseInt(cb.dataset.col || '0', 10);
+          cb.checked = val;
+          state[idx] = val;
+        });
+        saveColsState(state);
+        applyColumnVisibility();
+      });
+    }
+  }
+
+  function initColumnsDropdown(){
+    const details = document.querySelector('details.relative');
+    if(!details) return;
+    document.addEventListener('click', (e)=>{
+      if(!details.open) return;
+      if(details.contains(e.target)) return;
+      details.open = false;
+    });
+  }
+
+  /* ================== Excel filters (client-side) ================== */
+  const excel = {
+    panel: document.getElementById('excelFilterPanel'),
+    titleEl: document.getElementById('excelPanelTitle'),
+    searchInput: document.getElementById('excelFilterSearch'),
+    optsBox: document.getElementById('excelFilterOptions'),
+    btnApply: document.getElementById('excelFilterApply'),
+    btnClearAll: document.getElementById('excelFilterClearAll'),
+    headers: Array.from(table.querySelectorAll('thead th')),
+    tbody: table.querySelector('tbody'),
+    allRows: Array.from(table.querySelector('tbody').rows),
+    distinctValues: {},
+    activeFilters: loadExcelFilters(),
+    currentColIndex: null,
+    panelEventsBound: false
+  };
+
+  function loadExcelFilters(){
+    try{
+      const key = 'taskExcelFilters:' + location.pathname;
+      const raw = sessionStorage.getItem(key);
+      if(!raw) return {};
+      const obj = JSON.parse(raw);
+      const result = {};
+      Object.entries(obj).forEach(([col, arr])=> result[col] = new Set(arr));
+      return result;
+    }catch(_){ return {}; }
+  }
+
+  function saveExcelFilters(active){
+    try{
+      const key = 'taskExcelFilters:' + location.pathname;
+      const plain = {};
+      Object.entries(active).forEach(([col, set])=> plain[col] = Array.from(set));
+      sessionStorage.setItem(key, JSON.stringify(plain));
+    }catch(_){}
+  }
+
+  function excelGetCellValue(td){
+    if(!td) return '(Vacías)';
+    let text = '';
+    if (td.dataset && td.dataset.excelValue){
+      text = td.dataset.excelValue;
+    } else {
+      text = (td.textContent || '');
+    }
+    text = (text || '').trim();
+    return text || '(Vacías)';
+  }
+
+  function excelBuildDistinctValues(){
+    excel.distinctValues = {};
+    excel.allRows.forEach(row=>{
+      Array.from(row.cells).forEach((td, idx)=>{
+        // última columna “Acción” no se filtra
+        if(idx === 10) return;
+        if(!excel.distinctValues[idx]) excel.distinctValues[idx] = new Set();
+        excel.distinctValues[idx].add(excelGetCellValue(td));
+      });
+    });
+  }
+
+  function excelUpdateHeaderStates(){
+    excel.headers.forEach((th, idx)=>{
+      if(!th.hasAttribute('data-excel-col')) return;
+      const hasFilter = !!(excel.activeFilters[idx] && excel.activeFilters[idx].size > 0);
+      th.classList.toggle('excel-col-filtered', hasFilter);
+    });
+  }
+
+  function excelApplyFilters(){
+    excel.allRows.forEach(row=>{
+      let visible = true;
+      for (const [colIndexStr, values] of Object.entries(excel.activeFilters)){
+        const idx = parseInt(colIndexStr, 10);
+        if(!values || values.size === 0) continue;
+        const cell = row.cells[idx];
+        const text = excelGetCellValue(cell);
+        if(!values.has(text)){
+          visible = false;
+          break;
+        }
+      }
+      row.style.display = visible ? '' : 'none';
+    });
+    excelUpdateHeaderStates();
+    saveExcelFilters(excel.activeFilters);
+  }
+
+  function excelRenderOptions(colIndex){
+    excel.optsBox.innerHTML = '';
+    const valuesSet = excel.distinctValues[colIndex] || new Set();
+    const values = Array.from(valuesSet).sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
+    const selected = excel.activeFilters[colIndex];
+
+    const allLabel = document.createElement('label');
+    allLabel.className = 'flex items-center gap-1 mb-1 text-xs';
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = !selected || selected.size === values.length;
+    allCb.addEventListener('change', ()=>{
+      excel.optsBox.querySelectorAll('input[type="checkbox"][data-value]').forEach(cb=> cb.checked = allCb.checked);
+    });
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(' (Seleccionar todo)'));
+    excel.optsBox.appendChild(allLabel);
+
+    values.forEach(val=>{
+      const label = document.createElement('label');
+      label.className = 'flex items-center gap-1 text-xs mt-0.5';
+      label.dataset.optionLabel = '1';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.dataset.value = val;
+      cb.checked = !selected || selected.has(val);
+
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + val));
+      excel.optsBox.appendChild(label);
+    });
+  }
+
+  function excelFilterOptionList(query){
+    const q = query.trim().toLowerCase();
+    excel.optsBox.querySelectorAll('label[data-option-label]').forEach(lbl=>{
+      lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  function excelOpenForHeader(th){
+    excel.currentColIndex = parseInt(th.dataset.excelIndex, 10);
+    excel.titleEl.textContent = th.innerText.trim();
+
+    excelBuildDistinctValues();
+    excelRenderOptions(excel.currentColIndex);
+
+    const rect = th.getBoundingClientRect();
+    const panelWidth = 260;
+    let left = rect.left + (rect.width - panelWidth) / 2;
+    let top  = rect.bottom + 4;
+    left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
+    excel.panel.style.left = left + 'px';
+    excel.panel.style.top  = top + 'px';
+
+    excel.panel.classList.remove('hidden');
+    excel.searchInput.value = '';
+    excelFilterOptionList('');
+    excel.searchInput.focus();
+  }
+
+  function excelBindPanelEventsOnce(){
+    if(excel.panelEventsBound) return;
+
+    excel.searchInput.addEventListener('input', ()=> excelFilterOptionList(excel.searchInput.value));
+
+    excel.btnApply.addEventListener('click', ()=>{
+      const idx = excel.currentColIndex;
+      if(idx == null){ excel.panel.classList.add('hidden'); return; }
+
+      const checks = excel.optsBox.querySelectorAll('input[type="checkbox"][data-value]');
+      const selected = new Set();
+      checks.forEach(cb=>{ if(cb.checked) selected.add(cb.dataset.value); });
+
+      const fullSet = excel.distinctValues[idx] || new Set();
+      if(selected.size === 0 || selected.size === fullSet.size){
+        delete excel.activeFilters[idx];
+      }else{
+        excel.activeFilters[idx] = selected;
+      }
+      excelApplyFilters();
+      excel.panel.classList.add('hidden');
+    });
+
+    excel.btnClearAll.addEventListener('click', ()=>{
+      const idx = excel.currentColIndex;
+      if(idx == null){ excel.panel.classList.add('hidden'); return; }
+      delete excel.activeFilters[idx];
+      excelApplyFilters();
+      excel.panel.classList.add('hidden');
+    });
+
+    document.addEventListener('click', (e)=>{
+      if(excel.panel.classList.contains('hidden')) return;
+      if(excel.panel.contains(e.target)) return;
+      if(e.target.closest('.excel-header-btn')) return;
+      excel.panel.classList.add('hidden');
+    });
+
+    excel.panelEventsBound = true;
+  }
+
+  function initExcelFilters(){
+    excelBindPanelEventsOnce();
+    excel.headers.forEach((th, idx)=>{
+      if(th.hasAttribute('data-excel-col')){
+        th.dataset.excelIndex = idx;
+        const btn = th.querySelector('.excel-header-btn');
+        if(btn){
+          btn.addEventListener('click', (ev)=>{
+            ev.stopPropagation();
+            excelOpenForHeader(th);
+          });
+        }
+      }
+    });
+    excelBuildDistinctValues();
+    excelApplyFilters();
+  }
+
+  function excelClearAll(){
+    excel.activeFilters = {};
+    excelApplyFilters();
+    excel.panel.classList.add('hidden');
+  }
+
+  const btnExcelClearAll = document.getElementById('btnExcelClearAll');
+  if(btnExcelClearAll){
+    btnExcelClearAll.addEventListener('click', (e)=>{
+      e.preventDefault();
+      excelClearAll();
+    });
+  }
+
+  /* ================== cantidad por página (submit al filtro) ================== */
+  const formCantidad = document.getElementById('formCantidad');
+  const selCantidad = document.getElementById('cantidad');
+  if(formCantidad && selCantidad){
+    selCantidad.addEventListener('change', ()=>{
+      const filtrosForm = document.getElementById('form-filtros');
+      if(!filtrosForm) return;
+      const hidden = filtrosForm.querySelector('input[name="cantidad"]');
+      if(hidden) hidden.value = selCantidad.value;
+      filtrosForm.submit();
+    });
+  }
+
+  /* ================== Inline status update (con modal bonito) ================== */
+  const STATUS_PEND_EXTERNO = "{{ STATUS_PEND_EXTERNO }}";
+  const STATUS_COMPLETADA   = "{{ STATUS_COMPLETADA }}";
+
+  function getCookie(name){
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return "";
+  }
+
+  function getCsrfToken(){
+    const inp = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return (inp && inp.value) ? inp.value : getCookie("csrftoken");
+  }
+
+  // Modal refs (deben existir en el HTML)
+  const modalEl   = document.getElementById("statusModal");
+  const titleEl   = document.getElementById("statusModalTitle");
+  const subEl     = document.getElementById("statusModalSubtitle");
+  const taEl      = document.getElementById("statusModalTextarea");
+  const errEl     = document.getElementById("statusModalError");
+  const btnCancel = document.getElementById("statusModalCancel");
+  const btnSkip   = document.getElementById("statusModalSkip");
+  const btnOk     = document.getElementById("statusModalConfirm");
+
+  function showModal(){
+    modalEl.classList.remove("hidden");
+    modalEl.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("overflow-hidden");
+  }
+
+  function hideModal(){
+    modalEl.classList.add("hidden");
+    modalEl.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("overflow-hidden");
+  }
+
+  function openCommentModal({ title, subtitle, required, placeholder, confirmText }){
+    return new Promise((resolve) => {
+      // Reset UI
+      titleEl.textContent = title || "Comentario";
+      subEl.textContent = subtitle || "";
+      taEl.value = "";
+      taEl.placeholder = placeholder || "Escribe aquí...";
+      errEl.classList.add("hidden");
+      btnOk.textContent = confirmText || "Guardar";
+
+      // Omitir solo si NO es requerido
+      btnSkip.classList.toggle("hidden", !!required);
+
+      const validate = () => {
+        if(!required){
+          errEl.classList.add("hidden");
+          btnOk.disabled = false;
+          btnOk.classList.remove("opacity-60");
+          return true;
+        }
+        const ok = (taEl.value || "").trim().length > 0;
+        if(ok){
+          errEl.classList.add("hidden");
+          btnOk.disabled = false;
+          btnOk.classList.remove("opacity-60");
+        }else{
+          errEl.classList.remove("hidden");
+          btnOk.disabled = true;
+          btnOk.classList.add("opacity-60");
+        }
+        return ok;
+      };
+
+      const onKey = (e) => {
+        if(e.key === "Escape"){
+          cleanup();
+          hideModal();
+          resolve({ok:false});
+        }
+      };
+
+      const onBackdrop = (e) => {
+        // clic fuera del dialog
+        if(e.target === modalEl || e.target === modalEl.firstElementChild){
+          cleanup();
+          hideModal();
+          resolve({ok:false});
+        }
+      };
+
+      const onInput = () => validate();
+
+      const onCancel = () => {
+        cleanup();
+        hideModal();
+        resolve({ok:false});
+      };
+
+      const onSkip = () => {
+        cleanup();
+        hideModal();
+        resolve({ok:true, value:""});
+      };
+
+      const onConfirm = () => {
+        if(required && !validate()) return;
+        const val = (taEl.value || "").trim();
+        cleanup();
+        hideModal();
+        resolve({ok:true, value: val});
+      };
+
+      function cleanup(){
+        document.removeEventListener("keydown", onKey);
+        modalEl.removeEventListener("click", onBackdrop);
+        taEl.removeEventListener("input", onInput);
+        btnCancel.removeEventListener("click", onCancel);
+        btnSkip.removeEventListener("click", onSkip);
+        btnOk.removeEventListener("click", onConfirm);
+      }
+
+      // Bind
+      document.addEventListener("keydown", onKey);
+      modalEl.addEventListener("click", onBackdrop);
+      taEl.addEventListener("input", onInput);
+      btnCancel.addEventListener("click", onCancel);
+      btnSkip.addEventListener("click", onSkip);
+      btnOk.addEventListener("click", onConfirm);
+
+      showModal();
+      validate();
+      setTimeout(()=> taEl.focus(), 50);
+    });
+  }
+
+  async function postStatusUpdate(actionUrl, csrf, next, comment){
+    const body = new URLSearchParams();
+    body.set("status", next);
+    body.set("comment", comment || "");
+
+    const resp = await fetch(actionUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "X-CSRFToken": csrf,
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: body.toString(),
+    });
+
+    return resp;
+  }
+
+  function bindInlineStatus(){
+    // Si no existe el modal en el HTML, no rompemos la página
+    if(!modalEl || !titleEl || !subEl || !taEl || !errEl || !btnCancel || !btnOk || !btnSkip){
+      console.warn("Falta el HTML del modal (#statusModal). No se puede usar inline status con modal.");
+      return;
+    }
+
+    const csrf = getCsrfToken();
+
+    table.querySelectorAll(".js-status-select").forEach(sel => {
+      sel.addEventListener("click", (e) => e.stopPropagation());
+
+      sel.addEventListener("change", async () => {
+        const action = sel.dataset.action || "";
+        const prev   = sel.dataset.current || "";
+        const next   = sel.value;
+
+        if(!action){
+          sel.value = prev;
+          return;
+        }
+
+        let comment = "";
+
+        try{
+          // Pendiente Externo => comentario obligatorio
+          if(next === STATUS_PEND_EXTERNO){
+            const res = await openCommentModal({
+              title: "Pendiente por persona externa",
+              subtitle: "Debes ingresar un comentario obligatorio para este estatus.",
+              required: true,
+              placeholder: "Ej: Quedó pendiente por ITO / cliente. Motivo y siguiente paso...",
+              confirmText: "Guardar"
+            });
+            if(!res.ok){
+              sel.value = prev;
+              return;
+            }
+            comment = res.value || "";
+          }
+
+          // Completada => comentario opcional (mismo modal)
+          if(next === STATUS_COMPLETADA){
+            const res = await openCommentModal({
+              title: "Marcar como completada",
+              subtitle: "Si quieres, deja un comentario (opcional).",
+              required: false,
+              placeholder: "Ej: Se entregó documento / se cerró con el cliente...",
+              confirmText: "Guardar"
+            });
+            if(!res.ok){
+              sel.value = prev;
+              return;
+            }
+            comment = res.value || ""; // puede ser ""
+          }
+
+          const resp = await postStatusUpdate(action, csrf, next, comment);
+
+          if(!resp.ok){
+            throw new Error("HTTP " + resp.status);
+          }
+
+          sel.dataset.current = next;
+          window.location.reload();
+        }catch(err){
+          console.error(err);
+          alert("No se pudo actualizar el estatus. Revisa consola / red.");
+          sel.value = prev;
+        }
+      });
+    });
+  }
+
+  /* ================== Init ================== */
+  engancharColumnToggles();
+  initColumnsDropdown();
+  applyColumnVisibility();
+  initExcelFilters();
+  bindInlineStatus();
+})();
+</script>
+{% endblock %}  

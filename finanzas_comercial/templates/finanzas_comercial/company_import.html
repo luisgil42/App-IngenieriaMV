@@ -1,0 +1,57 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Importar Empresas - Finanzas Comercial{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-[900px] mx-auto">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-extrabold text-slate-900">Importar Empresas</h1>
+      <p class="text-slate-500 text-sm">Sube un archivo Excel (.xlsx) con el formato indicado.</p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="{% url 'finanzas_comercial:company_import_template_xlsx' %}"
+         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+        Descargar formato
+      </a>
+      <a href="{% url 'finanzas_comercial:company_list' %}"
+         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+        Volver
+      </a>
+    </div>
+  </div>
+
+  <div class="mt-4 bg-white border border-slate-200 rounded-2xl p-5">
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+      {% csrf_token %}
+
+      <div>
+        <label class="text-xs font-semibold text-slate-600">Archivo .xlsx</label>
+        <input type="file" name="file" accept=".xlsx"
+               class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 bg-white">
+      </div>
+
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
+        <div class="font-semibold">Columnas esperadas:</div>
+        <ul class="list-disc ml-6 mt-1">
+          <li>Nombre de la empresa (obligatorio)</li>
+          <li>RUT, Ciudad, País/Región, Rubro/Sector, Número de contacto</li>
+          <li>Registrado por (email) (opcional)</li>
+          <li>Activo (SI/NO)</li>
+        </ul>
+        <div class="text-xs text-slate-500 mt-2">
+          Nota: el logo no se importa por Excel; se sube al editar/crear.
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
+          Importar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

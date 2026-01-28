@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+{% load static %}
+{% load humanize %}
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}MV Ingeniería{% endblock %}</title>
+
+  <!-- Icons / PWA -->
+  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/favicon-32x32.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/favicon-16x16.png' %}">
+  <link rel="manifest" href="{% static 'icons/site.webmanifest' %}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Layout */
+    .app-shell { min-height: 100vh; }
+
+    /* Sidebar widths (desktop) */
+    :root {
+      --sb-w: 18rem;      /* 288px */
+      --sb-mini: 5.25rem; /* 84px */
+      --top-h: 64px;
+    }
+
+    /* Desktop push content */
+    @media (min-width: 768px) {
+      .has-sidebar #main { margin-left: var(--sb-w); }
+      .mini-sidebar #main { margin-left: var(--sb-mini); }
+    }
+
+    /* Mobile: no push */
+    @media (max-width: 767px) {
+      #main { margin-left: 0 !important; }
+    }
+
+    /* Sidebar transitions */
+    .sb-transition { transition: width .2s ease, transform .2s ease; }
+
+    /* Mini mode: hide text */
+    .mini .sb-text { display: none; }
+    .mini .sb-section-title { display: none; }
+    .mini .sb-logo-text { display: none; }
+    .mini .sb-footer { display: none; }
+
+    /* Active link (tema claro) */
+    .sb-link.active {
+      background: rgba(37, 99, 235, 0.10); /* blue-600/10 */
+      border-left: 3px solid rgba(37, 99, 235, 1); /* blue-600 */
+    }
+
+    /* Submenu helpers */
+    .sb-submenu { display: none; }
+    .sb-submenu.open { display: block; }
+    .sb-chevron { transition: transform .15s ease; }
+    .sb-chevron.rotate { transform: rotate(90deg); }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <!-- Top bar -->
+  <header class="fixed top-0 left-0 right-0 z-50 h-[var(--top-h)]">
+    <div class="h-full bg-white border-b border-slate-200">
+      <div class="h-full flex items-center justify-between px-4">
+        <!-- Left -->
+        <div class="flex items-center gap-3">
+          <!-- Mobile menu -->
+          <button id="btnMobile"
+                  class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl
+                         bg-slate-100 hover:bg-slate-200 border border-slate-200">
+            <i data-lucide="menu" class="w-5 h-5 text-slate-700"></i>
+          </button>
+
+          <!-- Desktop mini toggle -->
+          <button id="btnMini"
+                  class="hidden md:inline-flex items-center justify-center w-10 h-10 rounded-xl
+                         bg-slate-100 hover:bg-slate-200 border border-slate-200">
+            <i data-lucide="panel-left" class="w-5 h-5 text-slate-700"></i>
+          </button>
+
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+              <img src="{% static 'core/images/logo_mv.png' %}" alt="Logo" class="h-8 object-contain">
+            </div>
+            <div class="hidden sm:block">
+              <div class="text-slate-900 font-extrabold leading-tight">MV Ingeniería</div>
+              <div class="text-xs text-slate-500 -mt-0.5">Plataforma interna</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right -->
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:flex flex-col text-right">
+            <span class="text-sm text-slate-900 font-semibold leading-tight">
+              {{ request.user.get_full_name|default:request.user.username }}
+            </span>
+            <span class="text-xs text-slate-500 leading-tight">
+              {% if request.user.is_superuser %}Superusuario{% elif request.user.is_staff %}Administrador{% else %}Usuario{% endif %}
+            </span>
+          </div>
+
+          <!-- Quick Security -->
+          <a href="{% url 'usuarios:security' %}"
+             class="inline-flex items-center gap-2 px-3 py-2 rounded-xl
+                    bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span class="hidden md:inline">Seguridad</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Shell -->
+  <div id="shell" class="app-shell pt-[var(--top-h)] has-sidebar">
+    <!-- Sidebar -->
+    <aside id="sidebar"
+           class="fixed top-[var(--top-h)] left-0 bottom-0 z-40 sb-transition
+                  w-[var(--sb-w)] bg-gradient-to-b from-blue-700 to-blue-800
+                  border-r border-blue-900/20 overflow-y-auto
+                  -translate-x-full md:translate-x-0">
+      <div class="p-4">
+        <!-- Brand -->
+        <div class="flex items-center gap-3 px-2 py-3">
+          <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/15 flex items-center justify-center">
+            <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+          </div>
+          <div class="sb-logo-text">
+            <div class="text-white font-extrabold leading-tight">Panel</div>
+            <div class="text-xs text-white/70 -mt-0.5">Navegación</div>
+          </div>
+        </div>
+
+        <!-- Nav -->
+        <nav class="mt-2 space-y-2">
+          <a href="{% url 'core:dashboard' %}"
+             class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+                    text-white/95 hover:text-white hover:bg-white/10">
+            <i data-lucide="home" class="w-5 h-5"></i>
+            <span class="sb-text text-sm font-semibold">Inicio</span>
+          </a>
+
+          <div class="sb-section-title text-xs text-white/70 font-semibold px-3 pt-4 pb-1">
+            Módulos
+          </div>
+
+          {% if request.user.is_superuser or request.user.is_staff or request.user.es_admin_general or request.user.es_comercial %}
+            {# FINANZAS COMERCIAL (abre/cierra submenu) #}
+            <div class="px-1">
+              <button type="button"
+                      data-submenu-toggle="fin_submenu"
+                      class="w-full sb-link flex items-center justify-between gap-3 px-3 py-2 rounded-xl
+                             text-white/95 hover:text-white hover:bg-white/10">
+                <span class="flex items-center gap-3">
+                  <i data-lucide="wallet" class="w-5 h-5"></i>
+                  <span class="sb-text text-sm font-semibold">Finanzas Comercial</span>
+                </span>
+                <span class="sb-text inline-flex items-center gap-2">
+                  <i data-lucide="chevron-right" class="w-4 h-4 sb-chevron"></i>
+                </span>
+              </button>
+
+              <div id="fin_submenu" class="sb-submenu mt-1 ml-3 space-y-1">
+  {# CONTACTOS -> directo a la lista #}
+  {% if request.user.is_superuser or request.user.is_staff or request.user.es_admin_general or request.user.es_comercial %}
+    <a href="{% url 'finanzas_comercial:contact_list' %}"
+       class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+              text-white/95 hover:text-white hover:bg-white/10
+              {% if request.resolver_match and request.resolver_match.url_name == 'contact_list' %}active{% endif %}">
+      <i data-lucide="contact" class="w-5 h-5"></i>
+      <span class="sb-text text-sm font-semibold">Contactos</span>
+    </a>
+  {% endif %}
+
+                {# EMPRESAS (sin URL por ahora) #}
+                {% if request.user.is_superuser or request.user.is_staff or request.user.es_admin_general or request.user.es_comercial %}
+                  <a href="{% url 'finanzas_comercial:company_list' %}"
+   class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+          text-white/95 hover:text-white hover:bg-white/10
+          {% if request.resolver_match and request.resolver_match.url_name == 'company_list' %}active{% endif %}">
+  <i data-lucide="building-2" class="w-5 h-5"></i>
+  <span class="sb-text text-sm font-semibold">Empresas</span>
+</a>
+                {% endif %}
+
+                {# NEGOCIOS (sin URL por ahora) #}
+                {% if request.user.is_superuser or request.user.is_staff or request.user.es_admin_general or request.user.es_comercial %}
+                  <a href="{% url 'finanzas_comercial:deal_list' %}"
+   class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+          text-white/95 hover:text-white hover:bg-white/10
+          {% if request.resolver_match and request.resolver_match.url_name == 'deal_list' %}active{% endif %}">
+  <i data-lucide="briefcase-business" class="w-5 h-5"></i>
+  <span class="sb-text text-sm font-semibold">Negocios</span>
+</a>
+                {% endif %}
+
+                {# TAREAS (sin URL por ahora) #}
+                <a href="{% url 'finanzas_comercial:task_list' %}"
+   class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+          text-white/95 hover:text-white hover:bg-white/10
+          {% if request.resolver_match and request.resolver_match.url_name == 'task_list' %}active{% endif %}">
+  <i data-lucide="check-square" class="w-5 h-5"></i>
+  <span class="sb-text text-sm font-semibold">Tareas</span>
+</a>
+
+               
+{# COTIZACIONES #}
+{% if request.user.is_superuser or request.user.is_staff or request.user.es_admin_general or request.user.es_comercial %}
+  <a href="{% url 'finanzas_comercial:quote_list' %}"
+     class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+            text-white/95 hover:text-white hover:bg-white/10
+            {% if request.resolver_match and request.resolver_match.url_name == 'quote_list' %}active{% endif %}">
+    <i data-lucide="file-text" class="w-5 h-5"></i>
+    <span class="sb-text text-sm font-semibold">Cotizaciones</span>
+  </a>
+{% endif %}
+
+                {# OC PROVEEDORES (sin URL por ahora) #}
+                {% if request.user.is_superuser or request.user.is_staff or request.user.es_admin_general %}
+                  <a href="#" onclick="return false;"
+                     class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+                            text-white/70 bg-white/5 border border-white/10 cursor-not-allowed">
+                    <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                    <span class="sb-text text-sm font-semibold">Órdenes de Compra</span>
+                  </a>
+                {% endif %}
+
+              
+              </div>
+            </div>
+          {% endif %}
+
+          {# USUARIOS (solo staff) #}
+          {% if request.user.is_staff %}
+          <a href="{% url 'usuarios:user_list' %}"
+             class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+                    text-white/95 hover:text-white hover:bg-white/10">
+            <i data-lucide="users" class="w-5 h-5"></i>
+            <span class="sb-text text-sm font-semibold">Usuarios</span>
+          </a>
+          {% endif %}
+
+          <div class="sb-section-title text-xs text-white/70 font-semibold px-3 pt-4 pb-1">
+            Cuenta
+          </div>
+
+          <a href="{% url 'usuarios:security' %}"
+             class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+                    text-white/95 hover:text-white hover:bg-white/10">
+            <i data-lucide="shield" class="w-5 h-5"></i>
+            <span class="sb-text text-sm font-semibold">Seguridad (2FA)</span>
+          </a>
+
+          <!-- Logout -->
+          <form method="post" action="{% url 'usuarios:logout' %}" class="mt-3">
+            {% csrf_token %}
+            <button type="submit"
+              class="w-full flex items-center gap-3 px-3 py-2 rounded-xl
+                     text-white bg-white/10 hover:bg-white/15 border border-white/15">
+              <i data-lucide="log-out" class="w-5 h-5"></i>
+              <span class="sb-text text-sm font-semibold">Cerrar sesión</span>
+            </button>
+          </form>
+        </nav>
+
+        <!-- Footer -->
+        <!-- Footer -->
+<div class="sb-footer mt-8 px-3 pb-6">
+  <div class="rounded-2xl bg-white/10 border border-white/15 p-4 text-center">
+    <div class="text-xs text-white/80">
+      Desarrollado por <span class="text-white font-semibold">Planix</span>
+    </div>
+
+    <div class="flex justify-center mt-3">
+      <img src="{% static 'core/images/planix.png' %}" alt="Planix" class="h-9 object-contain">
+    </div>
+  </div>
+</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main id="main" class="min-h-[calc(100vh-var(--top-h))] p-4 md:p-6">
+      <!-- Messages -->
+      {% if messages %}
+      <div id="flash" class="fixed top-[calc(var(--top-h)+16px)] left-1/2 -translate-x-1/2 z-[60]
+                             w-full max-w-xl space-y-2 px-4">
+        {% for message in messages %}
+          <div class="flex items-start justify-between gap-3 p-4 rounded-2xl shadow-lg text-white border border-white/10
+              {% if message.tags == 'success' %}bg-emerald-600
+              {% elif message.tags == 'error' %}bg-red-600
+              {% elif message.tags == 'warning' %}bg-amber-500
+              {% else %}bg-blue-600{% endif %}">
+            <div class="text-sm">{{ message }}</div>
+            <button onclick="this.parentElement.remove()" class="text-white/90 hover:text-white text-xl leading-none">&times;</button>
+          </div>
+        {% endfor %}
+      </div>
+      <script>
+        setTimeout(() => {
+          const flash = document.getElementById('flash');
+          if (flash) flash.remove();
+        }, 4500);
+      </script>
+      {% endif %}
+
+      {% block dashboard_content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+
+ <script>
+  (function () {
+    const sidebar = document.getElementById('sidebar');
+    const shell   = document.getElementById('shell');
+    const btnMini = document.getElementById('btnMini');
+    const btnMob  = document.getElementById('btnMobile');
+
+    const uid = "{{ request.user.id|default:'' }}";
+    const KEY = "mv_sb_state_" + (uid || "anon");
+
+    function applyDesktop() {
+      const mini = localStorage.getItem(KEY) === "mini";
+      shell.classList.toggle("mini-sidebar", mini);
+      sidebar.classList.toggle("mini", mini);
+      sidebar.style.width = mini ? "var(--sb-mini)" : "var(--sb-w)";
+    }
+
+    function openMobile() { sidebar.classList.remove("-translate-x-full"); }
+    function closeMobile() { sidebar.classList.add("-translate-x-full"); }
+
+    function isDesktop() { return window.matchMedia("(min-width: 768px)").matches; }
+
+    function sync() {
+      if (isDesktop()) {
+        sidebar.classList.remove("-translate-x-full");
+        applyDesktop();
+      } else {
+        sidebar.style.width = "var(--sb-w)";
+        sidebar.classList.remove("mini");
+        shell.classList.remove("mini-sidebar");
+        closeMobile();
+      }
+    }
+
+    btnMini && btnMini.addEventListener("click", () => {
+      const willMini = !(localStorage.getItem(KEY) === "mini");
+      localStorage.setItem(KEY, willMini ? "mini" : "full");
+      applyDesktop();
+    });
+
+    btnMob && btnMob.addEventListener("click", () => {
+      sidebar.classList.contains("-translate-x-full") ? openMobile() : closeMobile();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (isDesktop()) return;
+      const clickedInside = sidebar.contains(e.target) || (btnMob && btnMob.contains(e.target));
+      if (!clickedInside) closeMobile();
+    });
+
+    window.addEventListener("resize", sync);
+    document.addEventListener("DOMContentLoaded", sync);
+
+    // Submenus (Finanzas Comercial)
+    // ✅ Ahora soporta forceOpen: true/false para auto-abrir
+    function toggleSubmenu(btn, forceOpen = null) {
+      const id = btn.getAttribute("data-submenu-toggle");
+      const box = document.getElementById(id);
+      if (!box) return;
+
+      const chevron = btn.querySelector(".sb-chevron");
+      const willOpen = (forceOpen === null) ? !box.classList.contains("open") : !!forceOpen;
+
+      box.classList.toggle("open", willOpen);
+      chevron && chevron.classList.toggle("rotate", willOpen);
+    }
+
+    document.querySelectorAll("[data-submenu-toggle]").forEach(btn => {
+      btn.addEventListener("click", () => toggleSubmenu(btn));
+    });
+
+    // ✅ Auto-abrir submenu si hay un link activo dentro (contactos/empresas/negocios/tareas/cotizaciones)
+    document.addEventListener("DOMContentLoaded", () => {
+      const finBtn = document.querySelector('[data-submenu-toggle="fin_submenu"]');
+      const finBox = document.getElementById("fin_submenu");
+      if (!finBtn || !finBox) return;
+
+      const hasActiveInside = !!finBox.querySelector("a.sb-link.active");
+      if (hasActiveInside) {
+        toggleSubmenu(finBtn, true);
+      }
+    });
+  })();
+</script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

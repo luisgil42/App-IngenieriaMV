@@ -1,0 +1,196 @@
+{% extends "core/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-4xl mx-auto px-3 sm:px-0">
+  <div class="mb-5">
+    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900">
+      {{ title }}
+    </h1>
+    <p class="text-sm text-slate-600 mt-1">
+      Completa los datos del usuario y asigna uno o más roles.
+    </p>
+  </div>
+
+  <div class="rounded-3xl bg-white border border-slate-200 p-6 shadow">
+    {% if form_errors %}
+      <div class="mb-5 rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
+        <div class="font-bold mb-1">Revisa estos errores:</div>
+        <ul class="list-disc pl-5 space-y-1">
+          {% for e in form_errors %}
+            <li>{{ e }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+
+      <!-- Datos -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs text-slate-600 font-semibold">RUT</label>
+          <input type="text" name="rut" required
+                 placeholder="12.345.678-9"
+                 value="{{ values.rut|default:'' }}"
+                 class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-600 font-semibold">Email</label>
+          <input type="email" name="email" required
+                 placeholder="correo@dominio.com"
+                 value="{{ values.email|default:'' }}"
+                 class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-600 font-semibold">Nombre</label>
+          <input type="text" name="first_name" required
+                 placeholder="Nombre"
+                 value="{{ values.first_name|default:'' }}"
+                 class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-600 font-semibold">Apellido</label>
+          <input type="text" name="last_name" required
+                 placeholder="Apellido"
+                 value="{{ values.last_name|default:'' }}"
+                 class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-xs text-slate-600 font-semibold">Teléfono</label>
+          <input type="text" name="phone"
+                 placeholder="+56 9 ..."
+                 value="{{ values.phone|default:'' }}"
+                 class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+        </div>
+      </div>
+
+      <!-- Notificaciones -->
+      <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+        <div class="text-slate-900 font-bold mb-2">Notificaciones</div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs text-slate-600 font-semibold">Chat ID Telegram</label>
+            <input type="text" name="telegram_chat_id"
+                   value="{{ values.telegram_chat_id|default:'' }}"
+                   placeholder="Se completa cuando el bot hable con el usuario"
+                   class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900 placeholder:text-slate-400
+                          focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500">
+          </div>
+
+          <div class="flex flex-col justify-center gap-2">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="email_notificaciones_activo"
+                     class="rounded border-slate-300"
+                     {% if values.email_notificaciones_activo %}checked{% endif %}>
+              <span>Correo activo</span>
+            </label>
+
+            <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="telegram_activo"
+                     class="rounded border-slate-300"
+                     {% if values.telegram_activo %}checked{% endif %}>
+              <span>Telegram activo</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Roles -->
+      <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+        <div class="text-slate-900 font-bold mb-2">Roles</div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          {% for r in roles %}
+            <label class="inline-flex items-center gap-2 rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-800">
+              <input type="checkbox" name="role_ids" value="{{ r.id }}"
+                     class="rounded border-slate-300"
+                     {% if r.id in selected_role_ids %}checked{% endif %}>
+              <span>{{ r.name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+
+        <p class="text-[11px] text-slate-500 mt-2">
+          Admin: acceso total. Comercial: acceso al módulo comercial.
+          Si tiene ambos, predomina Admin.
+        </p>
+      </div>
+
+      <!-- Estado -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <label class="inline-flex items-center gap-2 rounded-2xl bg-slate-50 border border-slate-200 px-3 py-3 text-sm text-slate-800">
+          <input type="checkbox" name="is_active" class="rounded border-slate-300"
+                 {% if values.is_active %}checked{% endif %}>
+          Activo
+        </label>
+
+        <label class="inline-flex items-center gap-2 rounded-2xl bg-slate-50 border border-slate-200 px-3 py-3 text-sm text-slate-800">
+          <input type="checkbox" name="is_staff" class="rounded border-slate-300"
+                 {% if values.is_staff %}checked{% endif %}>
+          Staff
+        </label>
+
+        <label class="inline-flex items-center gap-2 rounded-2xl bg-slate-50 border border-slate-200 px-3 py-3 text-sm text-slate-800">
+          <input type="checkbox" name="is_superuser" class="rounded border-slate-300"
+                 {% if values.is_superuser %}checked{% endif %}>
+          Superusuario
+        </label>
+      </div>
+
+      <!-- Password -->
+      <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+        <div class="text-slate-900 font-bold mb-2">Contraseña</div>
+        <p class="text-xs text-slate-600 mb-3">
+          {% if is_edit %}
+            Si no quieres cambiarla, déjala en blanco.
+          {% else %}
+            Es obligatoria para crear el usuario.
+          {% endif %}
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs text-slate-600 font-semibold">Contraseña</label>
+            <input type="password" name="password1" {% if not is_edit %}required{% endif %}
+                   class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900
+                          focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-600 font-semibold">Repetir contraseña</label>
+            <input type="password" name="password2" {% if not is_edit %}required{% endif %}
+                   class="mt-1 w-full rounded-2xl bg-white border border-slate-300 px-4 py-3 text-slate-900
+                          focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button type="submit"
+                class="inline-flex items-center justify-center gap-2 w-full sm:w-auto rounded-2xl px-6 py-3
+                       bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+          {% if is_edit %}Guardar{% else %}Crear usuario{% endif %}
+        </button>
+
+        <a href="{% url 'usuarios:user_list' %}"
+           class="inline-flex items-center justify-center w-full sm:w-auto rounded-2xl px-6 py-3
+                  bg-white hover:bg-slate-50 text-slate-800 font-bold border border-slate-200">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

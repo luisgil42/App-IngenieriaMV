@@ -1,0 +1,322 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Iniciar Sesión - MV Ingeniería</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    :root{
+      /* 🎨 Paleta MV (basada en el azul del logo) */
+      --mv-navy: #233B8E;
+      --mv-blue: #1E63D6;
+      --mv-soft: #EAF1FF;
+      --mv-border: rgba(35, 59, 142, 0.22);
+
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+      --text: #0f172a;
+      --muted: #667085;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+      /* Fondo pro */
+      background:
+        radial-gradient(circle at 18% 20%, rgba(30, 99, 214, 0.18), transparent 45%),
+        radial-gradient(circle at 82% 30%, rgba(35, 59, 142, 0.20), transparent 48%),
+        linear-gradient(135deg, rgba(6, 12, 22, 0.88), rgba(10, 32, 46, 0.74));
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 22px;
+    }
+
+    .login-container {
+      background-color: rgba(255, 255, 255, 0.98);
+      padding: 2rem;
+      border-radius: 18px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+
+      border: 1px solid var(--mv-border);
+      box-shadow:
+        var(--shadow),
+        0 0 0 6px rgba(35, 59, 142, 0.06);
+
+      backdrop-filter: blur(6px);
+    }
+
+    /* Logo enmarcado */
+    .logo-box {
+      display: inline-block;
+      padding: 10px 12px;
+      background: var(--mv-soft);
+      border: 2px solid rgba(35, 59, 142, 0.18);
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+    .logo-box img {
+      max-width: 200px;
+      height: auto;
+      display: block;
+    }
+
+    /* Título */
+    .login-container h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--mv-navy);
+      text-shadow:
+        0 1px 0 rgba(255,255,255,0.65),
+        0 10px 22px rgba(30, 99, 214, 0.14);
+    }
+
+    .login-container p.subtexto {
+      font-size: 0.92rem;
+      color: #666;
+      margin: 0 0 1.4rem 0;
+    }
+
+    /* Errores */
+    .errorlist {
+      color: #d93025;
+      list-style: none;
+      padding: 0;
+      margin: 0 0 10px 0;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+
+    /* Mensajes */
+    .message-box {
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      font-size: 0.92rem;
+      text-align: left;
+      opacity: 1;
+      transition: opacity 0.5s ease-out;
+      border: 1px solid transparent;
+    }
+
+    .message-box.error { background-color: #fdecea; color: #d93025; border-color: rgba(217,48,37,.25); }
+    .message-box.success { background-color: #e6ffed; color: #188038; border-color: rgba(24,128,56,.22); }
+    .message-box.info { background-color: #e8f0fe; color: var(--mv-navy); border-color: rgba(35,59,142,.22); }
+
+    /* Form */
+    form { text-align: left; }
+    form p { margin-bottom: 14px; }
+
+    form label {
+      font-weight: 800;
+      display: block;
+      margin-bottom: 6px;
+      color: #222;
+      font-size: 0.95rem;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 11px 12px;
+      border: 2px solid rgba(0,0,0,0.16);
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+      border-color: rgba(30, 99, 214, 0.55);
+      box-shadow: 0 0 0 5px rgba(30, 99, 214, 0.12);
+    }
+
+    /* Password con ojito */
+    .password-wrapper { position: relative; }
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 1.25rem;
+      color: #666;
+      user-select: none;
+    }
+
+    /* Botón */
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--mv-blue), var(--mv-navy));
+      border: 1px solid rgba(10, 60, 130, 0.25);
+      color: white;
+      border-radius: 12px;
+      font-weight: 900;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+
+      box-shadow:
+        0 14px 28px rgba(30, 99, 214, 0.30),
+        0 8px 18px rgba(0, 0, 0, 0.10);
+      transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    }
+    button:hover {
+      filter: saturate(1.10) brightness(1.05);
+      box-shadow:
+        0 18px 38px rgba(30, 99, 214, 0.38),
+        0 12px 22px rgba(0, 0, 0, 0.14);
+      transform: translateY(-1px);
+    }
+
+    .forgot-password { margin-top: 14px; text-align: center; }
+    .forgot-password a {
+      color: var(--mv-navy);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+    .forgot-password a:hover { text-decoration: underline; }
+
+    /* Footer Planix */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+
+      text-align: center;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.78);
+      margin-top: 12px;
+      user-select: none;
+    }
+    .footer img {
+      height: 44px;
+      width: auto;
+      opacity: 0.95;
+      vertical-align: middle;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.25));
+    }
+
+    @media (max-width: 500px) {
+      .login-container { padding: 1.5rem; }
+      .logo-box img { width: 170px; }
+      .footer img { height: 38px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="login-container">
+    <!-- Logo MV -->
+    <div class="logo-box">
+      <img src="{% static 'core/images/logo_mv.png' %}" alt="MV Ingeniería">
+    </div>
+
+    <!-- Título -->
+    <h2>PLATAFORMA MV</h2>
+    <p class="subtexto">Potenciada por <strong>Planix</strong></p>
+
+    <!-- Mensajes del sistema -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="message-box {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Errores -->
+    {% if form.non_field_errors %}
+      <ul class="errorlist">
+        {% for error in form.non_field_errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <!-- Formulario (usa email + password) -->
+    <form method="post">
+      {% csrf_token %}
+
+      <p>
+        <label for="id_email">Email</label>
+        <input
+          type="email"
+          name="email"
+          id="id_email"
+          value="{{ form.email.value|default:'' }}"
+          required
+          autocomplete="username"
+        >
+      </p>
+
+      <p>
+        <label for="id_password">Contraseña</label>
+        <div class="password-wrapper">
+          <input
+            type="password"
+            name="password"
+            id="id_password"
+            required
+            autocomplete="current-password"
+          >
+          <span class="toggle-password" onclick="togglePassword()">👁️</span>
+        </div>
+      </p>
+
+      <button type="submit">Iniciar sesión</button>
+    </form>
+
+    <!-- Enlace recuperación -->
+    <div class="forgot-password">
+      <a href="{% url 'usuarios:recuperar_contrasena' %}">¿Olvidaste tu contraseña?</a>
+    </div>
+  </div>
+
+  <!-- Footer fuera del contenedor (NO eliminar Planix) -->
+  <div class="footer">
+    Desarrollado por
+    <img src="{% static 'core/images/planixl.png' %}" alt="Planix">
+  </div>
+
+  <script>
+    function togglePassword() {
+      const passwordField = document.getElementById('id_password');
+      const toggleIcon = document.querySelector('.toggle-password');
+      if (passwordField.type === "password") {
+        passwordField.type = "text";
+        toggleIcon.textContent = "🙈";
+      } else {
+        passwordField.type = "password";
+        toggleIcon.textContent = "👁️";
+      }
+    }
+
+    setTimeout(() => {
+      document.querySelectorAll('.message-box').forEach(el => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 500);
+      });
+    }, 4000);
+  </script>
+
+</body>
+</html>

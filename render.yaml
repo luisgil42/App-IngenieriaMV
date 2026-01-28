@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: mv-ingenieria
+    env: python
+    plan: starter
+    buildCommand: ./build.sh
+    startCommand: gunicorn mv_ingenieria.wsgi:application --log-file -
+    autoDeploy: true
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "mv_ingenieria.settings"

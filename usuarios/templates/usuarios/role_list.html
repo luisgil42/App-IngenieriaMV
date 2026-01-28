@@ -1,0 +1,84 @@
+{% extends "core/base.html" %}
+{% block title %}Roles - Admin{% endblock %}
+
+{% block dashboard_content %}
+<div class="bg-white shadow mt-3 -mx-3 sm:mx-0 rounded-none sm:rounded-2xl px-3 py-4 sm:p-6">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+    <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+      🧩 Roles
+    </h1>
+
+    <a href="{% url 'usuarios:role_create' %}"
+       class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-xl text-sm shadow">
+      ➕ Nuevo Rol
+    </a>
+  </div>
+
+  <!-- Tabla -->
+  <div class="overflow-x-auto">
+    <table class="table-auto w-full text-sm min-w-full sm:min-w-[900px]" style="white-space: nowrap;">
+      <thead class="bg-gray-100 text-gray-800 font-semibold text-left">
+        <tr>
+          <th class="px-4 py-2">Nombre</th>
+          <th class="px-4 py-2">Activo</th>
+          <th class="px-4 py-2">Requiere 2FA</th>
+          <th class="px-4 py-2">Usuarios</th>
+          <th class="px-4 py-2">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody class="text-left divide-y divide-gray-100">
+        {% for r in roles %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-2 font-semibold text-slate-900">{{ r.name }}</td>
+
+          <td class="px-4 py-2">
+            {% if r.is_active %}
+              <span class="inline-flex items-center px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
+                ✔ Sí
+              </span>
+            {% else %}
+              <span class="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
+                ✖ No
+              </span>
+            {% endif %}
+          </td>
+
+          <td class="px-4 py-2">
+            {% if r.require_2fa %}
+              <span class="inline-flex items-center px-3 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-semibold">
+                Sí
+              </span>
+            {% else %}
+              <span class="inline-flex items-center px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-xs font-semibold">
+                No
+              </span>
+            {% endif %}
+          </td>
+
+          <td class="px-4 py-2">
+            <span class="text-slate-700">{{ r.users.count }}</span>
+          </td>
+
+          <td class="px-4 py-2">
+            <a href="{% url 'usuarios:role_edit' r.id %}"
+               class="text-blue-600 hover:underline text-sm font-medium">
+              ✏️ Editar
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="p-4 text-center text-gray-500">
+            No hay roles creados.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,556 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-[1200px] mx-auto">
+
+  <div class="flex items-center justify-between gap-3 mb-5">
+    <div>
+      <h1 class="text-2xl font-extrabold text-slate-900">{{ title }}</h1>
+      <p class="text-sm text-slate-500">
+        {% if is_edit %}Editando cotización #{{ obj.pk }}{% else %}Crea una nueva cotización y previsualiza antes de guardar.{% endif %}
+      </p>
+    </div>
+
+    <a href="{% url 'finanzas_comercial:quote_list' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-semibold">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      Volver
+    </a>
+  </div>
+  <form method="post" class="space-y-4" novalidate>
+    {% csrf_token %}
+
+    {% if form.status.is_hidden %}{{ form.status }}{% endif %}
+
+    {% if form.errors or form.non_field_errors or formset.errors or formset.non_form_errors %}
+      <div id="formErrors"
+           class="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4">
+        <div class="font-extrabold mb-2">Revisa el formulario: hay errores.</div>
+
+        {% if form.non_field_errors %}
+          <div class="mb-2">
+            <div class="text-sm font-semibold">Errores generales:</div>
+            <ul class="list-disc pl-5 text-sm">
+              {% for e in form.non_field_errors %}
+                <li>{{ e }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        {% if formset.non_form_errors %}
+          <div class="mb-2">
+            <div class="text-sm font-semibold">Errores en líneas:</div>
+            <ul class="list-disc pl-5 text-sm">
+              {% for e in formset.non_form_errors %}
+                <li>{{ e }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        {% if debug %}
+          {% if form.errors %}
+            <details class="mt-3">
+              <summary class="cursor-pointer text-sm font-semibold">Ver errores del form (debug)</summary>
+              <pre class="text-xs whitespace-pre-wrap mt-2">{{ form.errors }}</pre>
+            </details>
+          {% endif %}
+          {% if formset.errors %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-sm font-semibold">Ver errores del formset (debug)</summary>
+              <pre class="text-xs whitespace-pre-wrap mt-2">{{ formset.errors }}</pre>
+            </details>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+        <div class="md:col-span-6">
+          <label class="text-xs font-semibold text-slate-600">Título del presupuesto</label>
+          {{ form.title }}
+          {% if form.title.errors %}<div class="text-xs text-red-600 mt-1">{{ form.title.errors }}</div>{% endif %}
+        </div>
+
+        {% if is_edit %}
+        <div class="md:col-span-3">
+          <label class="text-xs font-semibold text-slate-600">Estado</label>
+          {{ form.status }}
+          {% if form.status.errors %}<div class="text-xs text-red-600 mt-1">{{ form.status.errors }}</div>{% endif %}
+        </div>
+        {% endif %}
+
+        <div class="md:col-span-3">
+          <label class="text-xs font-semibold text-slate-600">Moneda</label>
+          {{ form.currency }}
+          {% if form.currency.errors %}<div class="text-xs text-red-600 mt-1">{{ form.currency.errors }}</div>{% endif %}
+          <div class="text-xs text-slate-400 mt-1">Se aplicará a todos los montos.</div>
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="text-xs font-semibold text-slate-600">Propietario de la cotización</label>
+          {{ form.owner }}
+          {% if form.owner.errors %}<div class="text-xs text-red-600 mt-1">{{ form.owner.errors }}</div>{% endif %}
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="text-xs font-semibold text-slate-600">Preparado por</label>
+          {{ form.prepared_by }}
+          {% if form.prepared_by.errors %}<div class="text-xs text-red-600 mt-1">{{ form.prepared_by.errors }}</div>{% endif %}
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="text-xs font-semibold text-slate-600">Fecha creación</label>
+          {{ form.created_at }}
+          {% if form.created_at.errors %}<div class="text-xs text-red-600 mt-1">{{ form.created_at.errors }}</div>{% endif %}
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="text-xs font-semibold text-slate-600">Fecha vencimiento</label>
+          {{ form.expires_at }}
+          {% if form.expires_at.errors %}<div class="text-xs text-red-600 mt-1">{{ form.expires_at.errors }}</div>{% endif %}
+        </div>
+
+        <div class="md:col-span-6">
+          <label class="text-xs font-semibold text-slate-600">Negocio asociado</label>
+          {{ form.deal }}
+          {% if form.deal.errors %}<div class="text-xs text-red-600 mt-1">{{ form.deal.errors }}</div>{% endif %}
+        </div>
+
+        <div class="md:col-span-6">
+          <label class="text-xs font-semibold text-slate-600">Contactos (1 o 2)</label>
+          <div class="mt-2 space-y-2">
+            {{ form.contacts }}
+          </div>
+          {% if form.contacts.errors %}<div class="text-xs text-red-600 mt-1">{{ form.contacts.errors }}</div>{% endif %}
+          <div class="text-xs text-slate-400 mt-1">Puedes seleccionar 1 o 2 contactos.</div>
+        </div>
+
+        <!-- ✅ Descuento extra final -->
+        <div class="md:col-span-6">
+          <label class="text-xs font-semibold text-slate-600">Nombre descuento extra (opcional)</label>
+          {{ form.extra_discount_name }}
+          {% if form.extra_discount_name.errors %}<div class="text-xs text-red-600 mt-1">{{ form.extra_discount_name.errors }}</div>{% endif %}
+          <div class="text-xs text-slate-400 mt-1">Ej: “Descuento comercial”, “Descuento por convenio”, etc.</div>
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="text-xs font-semibold text-slate-600">% descuento extra (opcional)</label>
+          {{ form.extra_discount_pct }}
+          {% if form.extra_discount_pct.errors %}<div class="text-xs text-red-600 mt-1">{{ form.extra_discount_pct.errors }}</div>{% endif %}
+          <div class="text-xs text-slate-400 mt-1">Ej: 10</div>
+        </div>
+
+        <div class="md:col-span-12">
+          <label class="text-xs font-semibold text-slate-600">Comentario / observación</label>
+          {{ form.comments }}
+          {% if form.comments.errors %}<div class="text-xs text-red-600 mt-1">{{ form.comments.errors }}</div>{% endif %}
+        </div>
+
+        <div class="md:col-span-12">
+          <label class="text-xs font-semibold text-slate-600">Condiciones de compra</label>
+          {{ form.purchase_conditions }}
+          {% if form.purchase_conditions.errors %}<div class="text-xs text-red-600 mt-1">{{ form.purchase_conditions.errors }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-lg font-extrabold text-slate-900">Líneas / Ítems</div>
+          <div class="text-xs text-slate-500">Título, cantidad, monto unitario y descuento (%).</div>
+        </div>
+        <button type="button" id="btnAddLine"
+                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-semibold">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          Agregar línea
+        </button>
+      </div>
+
+      {{ formset.management_form }}
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-100 border border-slate-200">
+            <tr>
+              <th class="px-3 py-2 text-left font-extrabold">Título</th>
+              <th class="px-3 py-2 text-left font-extrabold w-[140px]">Cantidad</th>
+              <th class="px-3 py-2 text-left font-extrabold w-[180px]">Monto (unidad)</th>
+              <th class="px-3 py-2 text-left font-extrabold w-[160px]">Descuento (%)</th>
+              <th class="px-3 py-2 text-left font-extrabold w-[90px]">Quitar</th>
+            </tr>
+          </thead>
+
+          <tbody id="linesBody">
+            {% for f in formset.forms %}
+            <tr class="border-b border-slate-100">
+              <td class="px-3 py-2">
+                {{ f.title }}
+                {{ f.id }}
+                {{ f.sort_order.as_hidden }}
+                {% if f.title.errors %}<div class="text-xs text-red-600 mt-1">{{ f.title.errors }}</div>{% endif %}
+              </td>
+
+              <td class="px-3 py-2">
+                {{ f.qty }}
+                {% if f.qty.errors %}<div class="text-xs text-red-600 mt-1">{{ f.qty.errors }}</div>{% endif %}
+              </td>
+
+              <td class="px-3 py-2">
+                {{ f.unit_price_clp }}
+                {% if f.unit_price_clp.errors %}<div class="text-xs text-red-600 mt-1">{{ f.unit_price_clp.errors }}</div>{% endif %}
+              </td>
+
+              <td class="px-3 py-2">
+                {{ f.discount_pct }}
+                {% if f.discount_pct.errors %}<div class="text-xs text-red-600 mt-1">{{ f.discount_pct.errors }}</div>{% endif %}
+                <div class="text-xs text-slate-500 mt-1 js-disc-amount"></div>
+              </td>
+
+              <td class="px-3 py-2">
+                <span class="hidden">{{ f.DELETE }}</span>
+                <button type="button"
+                        class="js-remove-line inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-red-50 hover:border-red-300 text-slate-700 hover:text-red-700"
+                        title="Quitar línea">
+                  ✕
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if formset.non_form_errors %}
+        <div class="text-sm text-red-600 mt-3">{{ formset.non_form_errors }}</div>
+      {% endif %}
+
+      <!-- ✅ RESUMEN (debajo tabla) -->
+      <div class="mt-4 border-t border-slate-200 pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+
+          <div class="md:col-span-6">
+            <div class="text-sm font-extrabold text-slate-900">Resumen</div>
+            <div class="text-xs text-slate-500">Subtotal neto (ya con descuentos por línea) + descuento extra final (opcional).</div>
+          </div>
+
+          <div class="md:col-span-6">
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-sm">
+              <div class="flex items-center justify-between">
+                <div class="font-semibold text-slate-700">Subtotal (por única vez)</div>
+                <div class="font-extrabold text-slate-900" id="jsSubtotalNet">—</div>
+              </div>
+
+              <div class="flex items-center justify-between text-slate-600">
+                <div>Descuentos aplicados en líneas</div>
+                <div class="font-semibold" id="jsLineDiscount">—</div>
+              </div>
+
+              <div id="jsExtraRow" class="hidden">
+                <div class="flex items-center justify-between text-slate-600">
+                  <div>
+                    <span id="jsExtraName">Descuento extra</span>
+                    <span class="text-xs" id="jsExtraPct"></span>
+                  </div>
+                  <div class="font-semibold" id="jsExtraAmount">—</div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between border-t border-slate-200 pt-2">
+                <div class="font-extrabold text-slate-900">Total</div>
+                <div class="font-extrabold text-slate-900" id="jsTotalFinal">—</div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <div class="flex items-center justify-end gap-2">
+      <button name="action" value="preview"
+              class="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-extrabold">
+        Previsualizar
+      </button>
+
+      <button name="action" value="save"
+              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold">
+        Guardar
+      </button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  function tw(el, cls){
+    if(!el) return;
+    el.className = cls;
+  }
+
+  function toNumber(v){
+    v = (v ?? "").toString().trim();
+    v = v.replace(/\./g, "").replace(/,/g, "."); // soporta 14.666.967 o 14,666,967
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function fmtMoney(n, currency){
+    n = Number(n || 0);
+    const isUSD = (currency || "CLP").toUpperCase() === "USD";
+    const dec = isUSD ? 2 : 0;
+    const fmt = new Intl.NumberFormat('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return fmt.format(n);
+  }
+
+  function curSymbol(currency){
+    currency = (currency || "CLP").toUpperCase();
+    return currency === "USD" ? "US$" : "$";
+  }
+
+  // ===== Fields principales =====
+  const title = document.querySelector('input[name="title"]');
+  const status = document.querySelector('select[name="status"]'); // puede no existir en create (hidden)
+  const owner = document.querySelector('select[name="owner"]');
+  const prepared = document.querySelector('select[name="prepared_by"]');
+  const created = document.querySelector('input[name="created_at"]');
+  const exp = document.querySelector('input[name="expires_at"]');
+  const deal = document.querySelector('select[name="deal"]');
+  const comments = document.querySelector('textarea[name="comments"]');
+  const pc = document.querySelector('textarea[name="purchase_conditions"]');
+
+  const currencySel = document.querySelector('select[name="currency"]');
+  const extraName = document.querySelector('input[name="extra_discount_name"]');
+  const extraPct = document.querySelector('input[name="extra_discount_pct"]');
+
+  const baseInput = "w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none";
+  const baseSelect = baseInput;
+  const baseTextArea = "w-full mt-1 px-3 py-2 min-h-[120px] rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none";
+
+  tw(title, baseInput);
+  tw(status, baseSelect);
+  tw(owner, baseSelect);
+  tw(prepared, baseSelect);
+  tw(created, baseInput);
+  tw(exp, baseInput);
+  tw(deal, baseSelect);
+  tw(comments, baseTextArea);
+  tw(pc, baseTextArea);
+
+  tw(currencySel, baseSelect);
+  tw(extraName, baseInput);
+  tw(extraPct, baseInput);
+
+  // ===== ✅ estilos inputs de líneas =====
+  function styleExistingLineInputs(){
+    const lineInputCls = "w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none";
+    document.querySelectorAll('input[name$="-title"]').forEach(inp => tw(inp, lineInputCls));
+    document.querySelectorAll('input[name$="-qty"]').forEach(inp => tw(inp, lineInputCls));
+    document.querySelectorAll('input[name$="-unit_price_clp"]').forEach(inp => tw(inp, lineInputCls));
+    document.querySelectorAll('input[name$="-discount_pct"]').forEach(inp => tw(inp, lineInputCls));
+  }
+
+  // ===== Resumen UI =====
+  const elSubtotalNet = document.getElementById("jsSubtotalNet");
+  const elLineDiscount = document.getElementById("jsLineDiscount");
+  const elTotalFinal = document.getElementById("jsTotalFinal");
+
+  const elExtraRow = document.getElementById("jsExtraRow");
+  const elExtraName = document.getElementById("jsExtraName");
+  const elExtraPct = document.getElementById("jsExtraPct");
+  const elExtraAmount = document.getElementById("jsExtraAmount");
+
+  // ---- anti re-entrada por si acaso ----
+  let _recalcBusy = false;
+
+  function recalcSummary(){
+    if (_recalcBusy) return;
+    _recalcBusy = true;
+
+    try{
+      const currency = currencySel ? currencySel.value : "CLP";
+      const sym = curSymbol(currency);
+
+      let grossTotal = 0;
+      let lineDiscTotal = 0;
+      let subtotalNet = 0;
+
+      document.querySelectorAll('#linesBody tr').forEach(tr=>{
+        const del = tr.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if((del && del.checked) || tr.style.display === "none") return;
+
+        const qty = tr.querySelector('input[name$="-qty"]');
+        const unit = tr.querySelector('input[name$="-unit_price_clp"]');
+        const disc = tr.querySelector('input[name$="-discount_pct"]');
+
+        const qv = toNumber(qty ? qty.value : 0);
+        const uv = toNumber(unit ? unit.value : 0);
+        const dv = toNumber(disc ? disc.value : 0);
+
+        const gross = (qv * uv);
+        const discount = gross * (dv / 100.0);
+        const net = gross - discount;
+
+        grossTotal += gross;
+        lineDiscTotal += discount;
+        subtotalNet += net;
+
+        const discBox = tr.querySelector('.js-disc-amount');
+        if(discBox){
+          if(dv > 0 && discount > 0){
+            // IMPORTANTE: solo cambia texto (sin crear HTML)
+            discBox.textContent = `- ${sym} ${fmtMoney(discount, currency)}`;
+          }else{
+            discBox.textContent = "";
+          }
+        }
+      });
+
+      // descuento extra final
+      const pct = toNumber(extraPct ? extraPct.value : 0);
+      const name = (extraName ? extraName.value : "").trim();
+
+      let extraAmount = 0;
+      if(pct > 0){
+        extraAmount = subtotalNet * (pct / 100.0);
+      }
+      let totalFinal = subtotalNet - extraAmount;
+
+      if(elSubtotalNet) elSubtotalNet.textContent = `${sym} ${fmtMoney(subtotalNet, currency)}`;
+      if(elLineDiscount) elLineDiscount.textContent = `- ${sym} ${fmtMoney(lineDiscTotal, currency)}`;
+      if(elTotalFinal) elTotalFinal.textContent = `${sym} ${fmtMoney(totalFinal, currency)}`;
+
+      if(elExtraRow){
+        if(pct > 0){
+          elExtraRow.classList.remove("hidden");
+          if(elExtraName) elExtraName.textContent = name || "Descuento extra";
+          if(elExtraPct) elExtraPct.textContent = `(${pct.toFixed(2)}%)`;
+          if(elExtraAmount) elExtraAmount.textContent = `- ${sym} ${fmtMoney(extraAmount, currency)}`;
+        }else{
+          elExtraRow.classList.add("hidden");
+        }
+      }
+    } finally {
+      _recalcBusy = false;
+    }
+  }
+
+  // ✅ botón quitar (bind)
+  function bindRemoveButtons(){
+    document.querySelectorAll('#linesBody .js-remove-line').forEach(btn=>{
+      if(btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+
+      btn.addEventListener("click", ()=>{
+        const tr = btn.closest("tr");
+        if(!tr) return;
+        const del = tr.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if(del) del.checked = true;
+        tr.style.display = "none";
+        recalcSummary();
+      });
+    });
+  }
+
+  function refreshLinesUI(){
+    styleExistingLineInputs();
+    bindRemoveButtons();
+    recalcSummary();
+  }
+
+  // ===== Formset add line =====
+  const btnAdd = document.getElementById("btnAddLine");
+  const body = document.getElementById("linesBody");
+
+  function mgmt(name){
+    return document.querySelector(`input[name="lines-${name}"]`);
+  }
+
+  function addLine(){
+    const total = mgmt("TOTAL_FORMS");
+    if(!total) return;
+    const idx = parseInt(total.value || "0", 10);
+
+    const lineInputCls = "w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none";
+
+    const tr = document.createElement("tr");
+    tr.className = "border-b border-slate-100";
+    tr.innerHTML = `
+      <td class="px-3 py-2">
+        <input type="text" name="lines-${idx}-title"
+               class="${lineInputCls}"
+               placeholder="Descripción / ítem">
+        <input type="hidden" name="lines-${idx}-sort_order" value="${idx}">
+      </td>
+
+      <td class="px-3 py-2">
+        <input type="number" step="0.01" name="lines-${idx}-qty" value="1"
+               class="${lineInputCls}">
+      </td>
+
+      <td class="px-3 py-2">
+        <input type="number" step="0.01" name="lines-${idx}-unit_price_clp" value="0"
+               class="${lineInputCls}">
+      </td>
+
+      <td class="px-3 py-2">
+        <input type="number" step="0.01" min="0" max="100" name="lines-${idx}-discount_pct" value="0"
+               class="${lineInputCls}">
+        <div class="text-xs text-slate-500 mt-1 js-disc-amount"></div>
+      </td>
+
+      <td class="px-3 py-2">
+        <input type="checkbox" name="lines-${idx}-DELETE" class="hidden">
+        <button type="button"
+                class="js-remove-line inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-red-50 hover:border-red-300 text-slate-700 hover:text-red-700"
+                title="Quitar línea">✕</button>
+      </td>
+    `;
+
+    body.appendChild(tr);
+    total.value = String(idx + 1);
+
+    refreshLinesUI();
+  }
+
+  btnAdd && btnAdd.addEventListener("click", addLine);
+
+  // input live: recalcula SOLO cuando cambian qty/unit/discount
+  const linesBody = document.getElementById("linesBody");
+  if(linesBody){
+    linesBody.addEventListener("input", (e)=>{
+      if(
+        e.target.matches('input[name$="-qty"]') ||
+        e.target.matches('input[name$="-unit_price_clp"]') ||
+        e.target.matches('input[name$="-discount_pct"]')
+      ){
+        recalcSummary();
+      }
+    });
+  }
+
+  // cambios en moneda / descuento extra
+  currencySel && currencySel.addEventListener("change", recalcSummary);
+  extraPct && extraPct.addEventListener("input", recalcSummary);
+  extraName && extraName.addEventListener("input", recalcSummary);
+
+  const fe = document.getElementById("formErrors");
+  if(fe){
+    fe.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  refreshLinesUI();
+})();
+</script>
+{% endblock %}

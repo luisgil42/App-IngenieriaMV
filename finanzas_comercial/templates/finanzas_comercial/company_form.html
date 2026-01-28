@@ -1,0 +1,104 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - Empresas{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-[900px] mx-auto">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-extrabold text-slate-900">{{ title }}</h1>
+      <p class="text-slate-500 text-sm">Completa los datos de la empresa.</p>
+    </div>
+
+    <a href="{% url 'finanzas_comercial:company_list' %}"
+       class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+      Volver
+    </a>
+  </div>
+
+  <div class="mt-4 bg-white border border-slate-200 rounded-2xl p-5">
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Nombre de la empresa *</label>
+          {{ form.name }}
+          {% if form.name.errors %}<div class="text-xs text-red-600 mt-1">{{ form.name.errors }}</div>{% endif %}
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-600">RUT (opcional)</label>
+          {{ form.rut }}
+          {% if form.rut.errors %}<div class="text-xs text-red-600 mt-1">{{ form.rut.errors }}</div>{% endif %}
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Ciudad</label>
+          {{ form.city }}
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-600">País/Región</label>
+          {{ form.country_region }}
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Rubro / Sector</label>
+          {{ form.sector }}
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Número de contacto</label>
+          {{ form.phone }}
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-xs font-semibold text-slate-600">Logo (opcional)</label>
+          {{ form.logo }}
+          {% if is_edit and obj.logo %}
+            <div class="mt-2 flex items-center gap-3">
+              <img src="{{ obj.logo.url }}" class="w-12 h-12 rounded-xl object-cover border border-slate-200" alt="Logo">
+              <span class="text-xs text-slate-500">Logo actual</span>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+            {{ form.is_active }} <span class="font-semibold">Activa</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <a href="{% url 'finanzas_comercial:company_list' %}"
+           class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+          Cancelar
+        </a>
+        <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
+          Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  input[type="text"], input[type="file"], input[type="email"], input[type="url"], textarea, select{
+    width:100%;
+    margin-top:.25rem;
+    padding:.5rem .75rem;
+    border-radius: .75rem;
+    border: 1px solid rgb(226 232 240);
+    outline: none;
+  }
+</style>
+{% endblock %}
