@@ -97,15 +97,15 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
 
-    # OTP + Axes
+    # ✅ 1 hora sin actividad => logout
+    "common.middleware.IdleLogoutMiddleware",
+
     "django_otp.middleware.OTPMiddleware",
     "axes.middleware.AxesMiddleware",
 
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 
-    # Reglas propias
-    # "common.middleware.Enforce2FAMiddleware",  # si lo usas, va antes de Require2FA
     "common.middleware.Require2FAMiddleware",
     "common.middleware.SecurityHeadersMiddleware",
 ]
@@ -271,3 +271,9 @@ if _enforce:
         TWO_FACTOR_ENFORCE_DATE = date(int(y), int(m), int(d))
     except Exception:
         TWO_FACTOR_ENFORCE_DATE = None
+
+# --- Sesión: cerrar al cerrar navegador + timeout por inactividad ---
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True   # ✅ al cerrar el navegador, se pierde la sesión
+SESSION_COOKIE_AGE = 60 * 60             # ✅ 1 hora (en segundos)
+SESSION_SAVE_EVERY_REQUEST = True        # ✅ “sliding session”: cada request renueva la hora
+SESSION_COOKIE_SAMESITE = "Lax"          # (recomendado)

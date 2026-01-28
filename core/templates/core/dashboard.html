@@ -40,7 +40,9 @@
         {{ request.user.get_full_name|default:request.user.username }}
       </div>
       <div class="text-xs text-slate-500 mt-1">
-        {% if request.user.is_superuser %}Superusuario{% elif request.user.is_staff %}Administrador{% else %}Usuario{% endif %}
+        {% if request.user.is_superuser %}Superusuario
+{% elif request.user.es_admin_general %}Administrador
+{% else %}Usuario{% endif %}
       </div>
     </div>
 

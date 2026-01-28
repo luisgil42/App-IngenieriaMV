@@ -104,7 +104,9 @@
               {{ request.user.get_full_name|default:request.user.username }}
             </span>
             <span class="text-xs text-slate-500 leading-tight">
-              {% if request.user.is_superuser %}Superusuario{% elif request.user.is_staff %}Administrador{% else %}Usuario{% endif %}
+              {% if request.user.is_superuser %}Superusuario
+{% elif request.user.es_admin_general %}Administrador
+{% else %}Usuario{% endif %}
             </span>
           </div>
 
@@ -239,15 +241,15 @@
             </div>
           {% endif %}
 
-          {# USUARIOS (solo staff) #}
-          {% if request.user.is_staff %}
-          <a href="{% url 'usuarios:user_list' %}"
-             class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
-                    text-white/95 hover:text-white hover:bg-white/10">
-            <i data-lucide="users" class="w-5 h-5"></i>
-            <span class="sb-text text-sm font-semibold">Usuarios</span>
-          </a>
-          {% endif %}
+      {# USUARIOS (solo admin real) #}
+{% if request.user.is_superuser or request.user.es_admin_general %}
+  <a href="{% url 'usuarios:user_list' %}"
+     class="sb-link flex items-center gap-3 px-3 py-2 rounded-xl
+            text-white/95 hover:text-white hover:bg-white/10">
+    <i data-lucide="users" class="w-5 h-5"></i>
+    <span class="sb-text text-sm font-semibold">Usuarios</span>
+  </a>
+{% endif %}
 
           <div class="sb-section-title text-xs text-white/70 font-semibold px-3 pt-4 pb-1">
             Cuenta
