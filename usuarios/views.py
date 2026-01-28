@@ -10,7 +10,9 @@ from django.utils import timezone
 # django-otp (para saber si tiene 2FA confirmado y para resetear)
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
-from common.permissions import require_perm
+from common.bootstrap_admin import ensure_bootstrap_admin
+
+ensure_bootstrap_admin()
 
 from .forms import (LoginForm, OTPVerifyForm, RoleForm, TOTPSetupVerifyForm,
                     UserForm)
@@ -21,6 +23,7 @@ from .services_2fa import (confirm_totp_device, generate_backup_codes,
 from .services_trusted import (make_trusted_device, revoke_all_trusted_devices,
                                revoke_trusted_device, verify_trusted_device)
 
+ensure_bootstrap_admin()
 
 # -----------------------------------------------------------------------------
 # helpers
@@ -182,6 +185,8 @@ def _trusted_cookie_name() -> str:
 # Auth
 # -----------------------------------------------------------------------------
 def login_view(request):
+    from common.bootstrap_admin import ensure_bootstrap_admin
+    ensure_bootstrap_admin()
     if request.user.is_authenticated:
         return redirect("core:dashboard")
 
