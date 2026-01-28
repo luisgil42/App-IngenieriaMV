@@ -1,33 +1,184 @@
 {% extends "core/base.html" %}
-
-{% block title %}Importar Negocios - Finanzas Comercial{% endblock %}
+{% block title %}Importar negocios - Finanzas Comercial{% endblock %}
 
 {% block dashboard_content %}
 <div class="max-w-[900px] mx-auto">
-  <div class="flex items-center justify-between">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
     <div>
       <h1 class="text-2xl font-extrabold text-slate-900">Importar negocios</h1>
-      <p class="text-sm text-slate-500">Sube un archivo .xlsx con columnas como exportación.</p>
+      <p class="text-slate-500 text-sm">
+        Sube un archivo Excel (.xlsx) con el formato definido. Puedes usar <b>Empresa (ID)</b> (recomendado) o <b>Empresa</b> (nombre).
+      </p>
     </div>
+
     <a href="{% url 'finanzas_comercial:deal_list' %}"
-       class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+       class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
       Volver
     </a>
   </div>
 
+  <!-- Info / Formato -->
   <div class="mt-4 bg-white border border-slate-200 rounded-2xl p-5">
-    <form method="post" enctype="multipart/form-data" class="space-y-4">
-      {% csrf_token %}
-      <div>
-        <label class="text-xs font-semibold text-slate-600">Archivo .xlsx</label>
-        <input type="file" name="file" accept=".xlsx"
-               class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="text-sm text-slate-700">
+        <div class="font-semibold text-slate-900">1) Descarga el formato</div>
+        <div class="text-slate-600 mt-0.5">
+          El formato incluye una hoja <b>Empresas</b> con IDs. Idealmente completa <b>Empresa (ID)</b> para evitar duplicados.
+        </div>
       </div>
 
-      <button class="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold">
-        Importar
-      </button>
+      <a href="{% url 'finanzas_comercial:deal_import_template_xlsx' %}"
+         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+        <span>Descargar formato</span>
+      </a>
+    </div>
+
+    <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div class="text-sm font-semibold text-slate-900">Reglas rápidas</div>
+      <ul class="mt-2 space-y-1 text-sm text-slate-700 list-disc pl-5">
+        <li><b>Nombre del negocio</b> es obligatorio.</li>
+        <li>Si informas <b>Empresa (ID)</b>, se usa esa empresa tal cual.</li>
+        <li>Si <b>Empresa (ID)</b> está vacío, se usa <b>Empresa</b> (nombre). Si no existe, el sistema la crea automáticamente.</li>
+        <li><b>Propietario (email)</b> debe ser un usuario Comercial existente; si no se encuentra, queda vacío.</li>
+        <li><b>Etapa</b> debe coincidir con el nombre de una etapa existente (si no se encuentra, queda por defecto o vacío según tu importador).</li>
+        <li><b>Activo</b> debe venir como <b>SI</b> / <b>NO</b>.</li>
+      </ul>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="mt-5 space-y-4" id="importForm">
+      {% csrf_token %}
+
+      <!-- Dropzone -->
+      <div>
+        <label class="text-xs font-semibold text-slate-600">Archivo (.xlsx)</label>
+
+        <div id="dropzone"
+             class="mt-1 w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white p-5
+                    hover:bg-slate-50 transition cursor-pointer">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
+              <span class="text-slate-600 text-lg">⬆️</span>
+            </div>
+
+            <div class="flex-1">
+              <div class="text-sm font-semibold text-slate-900">
+                Arrastra tu archivo aquí o haz clic para seleccionarlo
+              </div>
+              <div class="text-xs text-slate-600 mt-0.5">
+                Solo se permite <b>.xlsx</b>
+              </div>
+
+              <div id="fileName" class="hidden mt-3">
+                <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-800">
+                  <span class="font-semibold">Archivo:</span>
+                  <span id="fileNameText"></span>
+                  <button type="button" id="btnClear"
+                          class="ml-2 text-slate-500 hover:text-slate-800 font-semibold">
+                    Quitar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input real -->
+        <input id="fileInput" type="file" name="file" accept=".xlsx" class="hidden">
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-2">
+        <a href="{% url 'finanzas_comercial:deal_list' %}"
+           class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+          Cancelar
+        </a>
+        <button id="btnSubmit"
+                class="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700
+                       text-white text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+          Importar
+        </button>
+      </div>
     </form>
   </div>
 </div>
+
+<script>
+  (function () {
+    const dz = document.getElementById("dropzone");
+    const input = document.getElementById("fileInput");
+    const fileNameBox = document.getElementById("fileName");
+    const fileNameText = document.getElementById("fileNameText");
+    const btnClear = document.getElementById("btnClear");
+    const btnSubmit = document.getElementById("btnSubmit");
+
+    function setFile(file) {
+      if (!file) return;
+
+      const name = (file.name || "").toLowerCase();
+      if (!name.endsWith(".xlsx")) {
+        alert("❌ Archivo inválido. Debe ser .xlsx");
+        input.value = "";
+        fileNameBox.classList.add("hidden");
+        btnSubmit.disabled = false;
+        return;
+      }
+
+      fileNameText.textContent = file.name;
+      fileNameBox.classList.remove("hidden");
+    }
+
+    function clearFile() {
+      input.value = "";
+      fileNameBox.classList.add("hidden");
+    }
+
+    dz.addEventListener("click", () => input.click());
+
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      setFile(file);
+    });
+
+    btnClear && btnClear.addEventListener("click", (e) => {
+      e.preventDefault();
+      clearFile();
+    });
+
+    // Drag & Drop
+    ["dragenter", "dragover"].forEach(evt => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dz.classList.add("ring-2", "ring-blue-200", "border-blue-300");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(evt => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dz.classList.remove("ring-2", "ring-blue-200", "border-blue-300");
+      });
+    });
+
+    dz.addEventListener("drop", (e) => {
+      const files = e.dataTransfer.files;
+      if (!files || !files.length) return;
+
+      // Asigna al input (compatible en la mayoría de navegadores modernos)
+      input.files = files;
+
+      const file = files[0];
+      setFile(file);
+    });
+
+    // Deshabilitar botón al enviar para evitar doble click
+    const form = document.getElementById("importForm");
+    form.addEventListener("submit", () => {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Importando...";
+    });
+  })();
+</script>
 {% endblock %}

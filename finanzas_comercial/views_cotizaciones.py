@@ -602,12 +602,33 @@ def quote_delete(request, pk: int):
         messages.error(request, "Acción inválida.")
         return redirect("finanzas_comercial:quote_list")
 
+    # Guardamos el key del archivo (por si luego se borra el objeto/modelo)
+    pdf_name = ""
     try:
-        obj.delete()
-        messages.success(request, "✅ Cotización eliminada.")
+        if getattr(obj, "pdf_file", None) and obj.pdf_file.name:
+            pdf_name = obj.pdf_file.name
+    except Exception:
+        pdf_name = ""
+
+    try:
+        with transaction.atomic():
+            # ✅ 1) Elimina primero el archivo en storage (Wasabi)
+            if pdf_name:
+                try:
+                    obj.pdf_file.delete(save=False)  # borra el objeto en Wasabi/S3
+                except Exception as e:
+                    # No frenar el borrado del registro por un fallo de storage, pero avisar
+                    messages.warning(
+                        request,
+                        f"⚠️ Se eliminó la cotización, pero no se pudo borrar el PDF en Wasabi: {e}"
+                    )
+
+            # ✅ 2) Elimina el registro (y sus líneas por cascade si aplica)
+            obj.delete()
+
+        messages.success(request, "✅ Cotización eliminada (y PDF eliminado de Wasabi si existía).")
     except Exception:
         messages.error(request, "No se pudo eliminar la cotización.")
-
     return redirect("finanzas_comercial:quote_list")
 
 

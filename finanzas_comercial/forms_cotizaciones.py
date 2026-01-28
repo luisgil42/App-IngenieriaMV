@@ -11,6 +11,8 @@ from django.utils import timezone
 
 from .models import Contact, Deal, Quote, QuoteLine
 
+DT_LOCAL_FORMAT = "%Y-%m-%dT%H:%M"
+
 User = get_user_model()
 
 
@@ -69,9 +71,10 @@ class QuoteForm(forms.ModelForm):
     Form principal de Cotización.
 
     - En CREATE: status NO se pide (lo setea la vista).
-    - Descuento extra final (opcional): nombre + porcentaje.
-    - Moneda: CLP o USD.
+    - En EDIT y DUPLICAR: precarga created_at / expires_at en formato datetime-local.
     """
+
+    DT_LOCAL_FORMAT = "%Y-%m-%dT%H:%M"
 
     class Meta:
         model = Quote
@@ -95,8 +98,9 @@ class QuoteForm(forms.ModelForm):
         widgets = {
             "title": forms.TextInput(attrs={"class": "w-full", "placeholder": "Ej: Presupuesto Reposición Piso..." }),
             "status": forms.Select(attrs={"class": "w-full"}),
-            "status_comment": forms.Textarea(attrs={"class": "w-full", "rows": 2, "placeholder": "Comentario del estado (opcional)"}),
-
+            "status_comment": forms.Textarea(
+                attrs={"class": "w-full", "rows": 2, "placeholder": "Comentario del estado (opcional)"}
+            ),
             "owner": forms.Select(attrs={"class": "w-full"}),
             "prepared_by": forms.Select(attrs={"class": "w-full"}),
             "deal": forms.Select(attrs={"class": "w-full"}),
@@ -104,8 +108,15 @@ class QuoteForm(forms.ModelForm):
             # ✅ contactos con checkboxes (sin shift/ctrl)
             "contacts": forms.CheckboxSelectMultiple(),
 
-            "created_at": forms.DateTimeInput(attrs={"type": "datetime-local", "class": "w-full"}),
-            "expires_at": forms.DateTimeInput(attrs={"type": "datetime-local", "class": "w-full"}),
+            # ✅ IMPORTANTE: datetime-local necesita formato "YYYY-MM-DDTHH:MM"
+            "created_at": forms.DateTimeInput(
+                attrs={"type": "datetime-local", "class": "w-full"},
+                format=DT_LOCAL_FORMAT,
+            ),
+            "expires_at": forms.DateTimeInput(
+                attrs={"type": "datetime-local", "class": "w-full"},
+                format=DT_LOCAL_FORMAT,
+            ),
 
             "comments": forms.Textarea(attrs={"class": "w-full", "rows": 3}),
             "purchase_conditions": forms.Textarea(attrs={"class": "w-full", "rows": 3}),
@@ -142,20 +153,46 @@ class QuoteForm(forms.ModelForm):
             self.fields["contacts"].required = False
             self.fields["contacts"].help_text = "Selecciona 1 o 2 contactos."
 
+        # ✅ Asegura que el POST también se pueda parsear como datetime-local
+        if "created_at" in self.fields:
+            self.fields["created_at"].input_formats = [self.DT_LOCAL_FORMAT]
+        if "expires_at" in self.fields:
+            self.fields["expires_at"].input_formats = [self.DT_LOCAL_FORMAT]
+
+        # ✅ SIEMPRE (edit y duplicar): si la instancia trae fechas, precárgalas en formato correcto
+        if inst:
+            if "created_at" in self.fields and inst.created_at and not self.initial.get("created_at"):
+                dt = inst.created_at
+                try:
+                    dt = timezone.localtime(dt)
+                except Exception:
+                    pass
+                self.initial["created_at"] = dt.strftime(self.DT_LOCAL_FORMAT)
+
+            if "expires_at" in self.fields and inst.expires_at and not self.initial.get("expires_at"):
+                dt = inst.expires_at
+                try:
+                    dt = timezone.localtime(dt)
+                except Exception:
+                    pass
+                self.initial["expires_at"] = dt.strftime(self.DT_LOCAL_FORMAT)
+
         # ✅ CREATE: status NO se pide al usuario
         if is_new and "status" in self.fields:
             self.fields["status"].required = False
             self.fields["status"].initial = getattr(Quote.Status, "CREADA", Quote.Status.EN_MODIFICACION)
             self.fields["status"].widget = forms.HiddenInput()
 
-        # defaults solo cuando es create
+        # ✅ defaults SOLO si no hay nada (ni initial ni instance)
         if is_new:
             now = timezone.localtime(timezone.now())
+
             if "created_at" in self.fields and not self.initial.get("created_at"):
-                self.initial["created_at"] = now.strftime("%Y-%m-%dT%H:%M")
+                self.initial["created_at"] = now.strftime(self.DT_LOCAL_FORMAT)
+
             if "expires_at" in self.fields and not self.initial.get("expires_at"):
                 exp = now + timezone.timedelta(days=30)
-                self.initial["expires_at"] = exp.strftime("%Y-%m-%dT%H:%M")
+                self.initial["expires_at"] = exp.strftime(self.DT_LOCAL_FORMAT)
 
             if user and user.is_authenticated:
                 try:
@@ -220,14 +257,11 @@ class QuoteForm(forms.ModelForm):
             pct = Decimal(str(pct))
         except Exception:
             pct = Decimal("0")
+
         if pct <= 0:
             cleaned["extra_discount_name"] = ""
 
-        # ✅ si hay % > 0 pero no hay nombre, lo dejamos permitido (no obligamos)
-        # (si quieres obligar nombre cuando hay %, me dices)
-
         return cleaned
-
 
 class QuoteLineForm(forms.ModelForm):
     class Meta:

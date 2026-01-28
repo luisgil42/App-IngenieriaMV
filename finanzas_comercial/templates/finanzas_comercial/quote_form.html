@@ -300,11 +300,22 @@
   }
 
   function toNumber(v){
-    v = (v ?? "").toString().trim();
-    v = v.replace(/\./g, "").replace(/,/g, "."); // soporta 14.666.967 o 14,666,967
-    const n = parseFloat(v);
-    return isNaN(n) ? 0 : n;
+  v = (v ?? "").toString().trim();
+  if(!v) return 0;
+
+  // Si viene con coma y punto: asumimos formato CL (1.234.567,89)
+  if (v.includes(",") && v.includes(".")) {
+    v = v.replace(/\./g, "").replace(/,/g, ".");
   }
+  // Si viene solo con coma: asumimos decimal con coma (123,45)
+  else if (v.includes(",") && !v.includes(".")) {
+    v = v.replace(/,/g, ".");
+  }
+  // Si viene solo con punto: asumimos decimal estándar HTML (1234.56) -> NO tocar
+
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
 
   function fmtMoney(n, currency){
     n = Number(n || 0);

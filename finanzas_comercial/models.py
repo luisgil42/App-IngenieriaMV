@@ -212,6 +212,8 @@ class Deal(models.Model):
         ]
 
     def __str__(self):
+        if self.pk:
+            return f"#{self.pk} - {self.name}"
         return self.name
 
     def touch_activity(self):

@@ -5,53 +5,195 @@
 
 {% block dashboard_content %}
 <div class="max-w-[900px] mx-auto">
-  <div class="flex items-center justify-between gap-3">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-extrabold text-slate-900">Importar Empresas</h1>
-      <p class="text-slate-500 text-sm">Sube un archivo Excel (.xlsx) con el formato indicado.</p>
+      <h1 class="text-2xl font-extrabold text-slate-900">Importar empresas</h1>
+      <p class="text-slate-500 text-sm">
+        Sube un archivo Excel (<b>.xlsx</b>) con el formato definido para cargar empresas al módulo Comercial.
+      </p>
     </div>
 
     <div class="flex items-center gap-2">
       <a href="{% url 'finanzas_comercial:company_import_template_xlsx' %}"
-         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+         class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
         Descargar formato
       </a>
       <a href="{% url 'finanzas_comercial:company_list' %}"
-         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+         class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
         Volver
       </a>
     </div>
   </div>
 
+  <!-- Info / Formato -->
   <div class="mt-4 bg-white border border-slate-200 rounded-2xl p-5">
-    <form method="post" enctype="multipart/form-data" class="space-y-4">
-      {% csrf_token %}
-
-      <div>
-        <label class="text-xs font-semibold text-slate-600">Archivo .xlsx</label>
-        <input type="file" name="file" accept=".xlsx"
-               class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 bg-white">
-      </div>
-
-      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
-        <div class="font-semibold">Columnas esperadas:</div>
-        <ul class="list-disc ml-6 mt-1">
-          <li>Nombre de la empresa (obligatorio)</li>
-          <li>RUT, Ciudad, País/Región, Rubro/Sector, Número de contacto</li>
-          <li>Registrado por (email) (opcional)</li>
-          <li>Activo (SI/NO)</li>
-        </ul>
-        <div class="text-xs text-slate-500 mt-2">
-          Nota: el logo no se importa por Excel; se sube al editar/crear.
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="text-sm text-slate-700">
+        <div class="font-semibold text-slate-900">1) Descarga el formato</div>
+        <div class="text-slate-600 mt-0.5">
+          Usa el archivo de formato para evitar errores de columnas y tipos de datos.
         </div>
       </div>
 
-      <div class="flex justify-end gap-2">
-        <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
+      <a href="{% url 'finanzas_comercial:company_import_template_xlsx' %}"
+         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+        <span>Descargar formato</span>
+      </a>
+    </div>
+
+    <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div class="text-sm font-semibold text-slate-900">Reglas rápidas</div>
+      <ul class="mt-2 space-y-1 text-sm text-slate-700 list-disc pl-5">
+        <li><b>Nombre de la empresa</b> es obligatorio.</li>
+        <li><b>RUT</b> es opcional (si lo tienes, inclúyelo para mejor identificación).</li>
+        <li><b>Registrado por (email)</b> es opcional; si se informa, debe existir como usuario del sistema.</li>
+        <li><b>Activo</b> debe ser <b>SI</b> o <b>NO</b> (si va vacío, queda activo según tu lógica de importación).</li>
+        <li>El <b>logo</b> no se importa por Excel; se sube al crear/editar la empresa.</li>
+      </ul>
+
+      <div class="text-xs text-slate-500 mt-3">
+        Columnas típicas: <b>Empresa</b> (obligatorio), <b>RUT</b>, <b>Ciudad</b>, <b>País/Región</b>, <b>Rubro/Sector</b>, <b>Número de contacto</b>, <b>Registrado por (email)</b>, <b>Activo (SI/NO)</b>.
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="mt-5 space-y-4" id="companyImportForm">
+      {% csrf_token %}
+
+      <!-- Dropzone -->
+      <div>
+        <label class="text-xs font-semibold text-slate-600">Archivo (.xlsx)</label>
+
+        <div id="companyDropzone"
+             class="mt-1 w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white p-5
+                    hover:bg-slate-50 transition cursor-pointer">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
+              <span class="text-slate-600 text-lg">⬆️</span>
+            </div>
+
+            <div class="flex-1">
+              <div class="text-sm font-semibold text-slate-900">
+                Arrastra tu archivo aquí o haz clic para seleccionarlo
+              </div>
+              <div class="text-xs text-slate-600 mt-0.5">
+                Solo se permite <b>.xlsx</b>
+              </div>
+
+              <div id="companyFileNameBox" class="hidden mt-3">
+                <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-800">
+                  <span class="font-semibold">Archivo:</span>
+                  <span id="companyFileNameText"></span>
+                  <button type="button" id="companyBtnClear"
+                          class="ml-2 text-slate-500 hover:text-slate-800 font-semibold">
+                    Quitar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input real -->
+        <input id="companyFileInput" type="file" name="file" accept=".xlsx" class="hidden">
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-2">
+        <a href="{% url 'finanzas_comercial:company_list' %}"
+           class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+          Cancelar
+        </a>
+        <button id="companyBtnSubmit"
+                class="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700
+                       text-white text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
           Importar
         </button>
       </div>
     </form>
   </div>
 </div>
+
+<script>
+  (function () {
+    const dz = document.getElementById("companyDropzone");
+    const input = document.getElementById("companyFileInput");
+    const fileNameBox = document.getElementById("companyFileNameBox");
+    const fileNameText = document.getElementById("companyFileNameText");
+    const btnClear = document.getElementById("companyBtnClear");
+    const btnSubmit = document.getElementById("companyBtnSubmit");
+    const form = document.getElementById("companyImportForm");
+
+    if (!dz || !input || !form) return;
+
+    function setFile(file) {
+      if (!file) return;
+
+      const name = (file.name || "").toLowerCase();
+      if (!name.endsWith(".xlsx")) {
+        alert("❌ Archivo inválido. Debe ser .xlsx");
+        input.value = "";
+        if (fileNameBox) fileNameBox.classList.add("hidden");
+        if (btnSubmit) btnSubmit.disabled = false;
+        return;
+      }
+
+      if (fileNameText) fileNameText.textContent = file.name;
+      if (fileNameBox) fileNameBox.classList.remove("hidden");
+    }
+
+    function clearFile() {
+      input.value = "";
+      if (fileNameBox) fileNameBox.classList.add("hidden");
+    }
+
+    dz.addEventListener("click", () => input.click());
+
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      setFile(file);
+    });
+
+    btnClear && btnClear.addEventListener("click", (e) => {
+      e.preventDefault();
+      clearFile();
+    });
+
+    // Drag & Drop
+    ["dragenter", "dragover"].forEach(evt => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dz.classList.add("ring-2", "ring-blue-200", "border-blue-300");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(evt => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dz.classList.remove("ring-2", "ring-blue-200", "border-blue-300");
+      });
+    });
+
+    dz.addEventListener("drop", (e) => {
+      const files = e.dataTransfer.files;
+      if (!files || !files.length) return;
+
+      // Asigna al input (compatible en navegadores modernos)
+      input.files = files;
+
+      const file = files[0];
+      setFile(file);
+    });
+
+    // Deshabilitar botón al enviar para evitar doble click
+    form.addEventListener("submit", () => {
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Importando...";
+      }
+    });
+  })();
+</script>
 {% endblock %}

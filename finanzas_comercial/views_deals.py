@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from decimal import Decimal
+from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -11,6 +12,9 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 from usuarios.decoradores import rol_requerido
 
@@ -646,3 +650,90 @@ def deal_import(request):
         return redirect("finanzas_comercial:deal_list")
 
     return render(request, "finanzas_comercial/deal_import.html")
+
+
+def deal_import_template_xlsx(request):
+    """
+    Descarga un Excel plantilla para importar Negocios.
+    Incluye hoja 'Negocios' + hoja 'Empresas' con IDs (si existe el modelo Company).
+    """
+    wb = Workbook()
+
+    # ===== Hoja 1: Negocios =====
+    ws = wb.active
+    ws.title = "Negocios"
+
+    headers = [
+        "Nombre del negocio *",
+        "Etapa",
+        "Fecha de cierre",        # ejemplo: 28-01-2026 18:00
+        "Propietario (email)",
+        "Valor",
+        "Empresa (ID)",           # recomendado
+        "Empresa",                # si no hay ID
+        "Activo (SI/NO)",
+    ]
+    ws.append(headers)
+
+    header_font = Font(bold=True, color="0F172A")
+    header_fill = PatternFill("solid", fgColor="F1F5F9")
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    ws.freeze_panes = "A2"
+
+    widths = [28, 18, 18, 28, 14, 14, 28, 14]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # fila ejemplo
+    ws.append([
+        "Negocio ejemplo",
+        "Prospección",
+        "28-01-2026 18:00",
+        "usuario@empresa.com",
+        1500000,
+        "",
+        "Empresa Demo SpA",
+        "SI",
+    ])
+
+    # ===== Hoja 2: Empresas =====
+    try:
+        # OJO: ajusta el import si tu modelo tiene otro nombre/ruta
+        from .models import Company
+
+        ws2 = wb.create_sheet(title="Empresas")
+        ws2.append(["ID", "Empresa"])
+
+        for col_idx in (1, 2):
+            cell = ws2.cell(row=1, column=col_idx)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        ws2.freeze_panes = "A2"
+        ws2.column_dimensions["A"].width = 10
+        ws2.column_dimensions["B"].width = 44
+
+        for c in Company.objects.all().order_by("name").only("id", "name"):
+            ws2.append([c.id, c.name])
+
+    except Exception:
+        # si no existe Company o falla el import, no rompemos la descarga
+        pass
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+
+    resp = HttpResponse(
+        bio.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = 'attachment; filename="formato_import_negocios.xlsx"'
+    return resp

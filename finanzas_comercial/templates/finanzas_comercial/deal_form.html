@@ -17,7 +17,9 @@
   </div>
 
   <div class="mt-4 bg-white border border-slate-200 rounded-2xl p-5">
-    <form method="post" enctype="multipart/form-data" class="space-y-4">
+
+   
+    <form id="dealForm" method="post" enctype="multipart/form-data" class="space-y-4">
       {% csrf_token %}
 
       <div>
@@ -69,7 +71,7 @@
         </div>
       </div>
 
-      <!-- ✅ Adjuntos iniciales (INICIAL / sin analizar) -->
+      {# ✅ Adjuntos iniciales (solo agrega nuevos) #}
       <div>
         <label class="text-xs font-semibold text-slate-600">Adjuntar documentos (RFP / entrada)</label>
 
@@ -84,65 +86,119 @@
         </button>
 
         <div class="text-xs text-slate-500 mt-1">Los archivos se guardan en Wasabi</div>
-
-        {% if is_edit and obj %}
-          <div class="border-t border-slate-200 mt-4 pt-4">
-            <div class="text-sm font-semibold text-slate-800 mb-2">Adjuntos actuales (RFP / entrada)</div>
-
-            {% if initial_existing and initial_existing|length > 0 %}
-              <ul class="space-y-2">
-                {% for a in initial_existing %}
-                  <li class="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
-                    <div class="text-sm text-slate-800 min-w-0">
-                      <div class="truncate">
-                        {{ a.original_name|default:a.file.name }}
-                      </div>
-                      <div class="text-xs text-slate-500">{{ a.uploaded_at|date:"d-m-Y H:i" }}</div>
-                    </div>
-
-                    <div class="flex items-center gap-2 shrink-0">
-                      <a href="{{ a.file.url }}" target="_blank"
-                         class="inline-flex items-center px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
-                        Ver
-                      </a>
-
-                      <form method="post"
-                            action="{% url 'finanzas_comercial:deal_attachment_delete' a.id %}"
-                            onsubmit="return confirm('¿Eliminar este adjunto?');">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                        <button type="submit"
-                                class="inline-flex items-center px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold">
-                          Eliminar
-                        </button>
-                      </form>
-                    </div>
-                  </li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              <div class="text-sm text-slate-500">Sin adjuntos.</div>
-            {% endif %}
-          </div>
-        {% endif %}
       </div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
+        <button type="submit"
+                class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
           Guardar
         </button>
       </div>
     </form>
+
+   
+    {% if is_edit and obj %}
+      <div class="border-t border-slate-200 mt-6 pt-4">
+        <div class="text-sm font-semibold text-slate-800 mb-2">Adjuntos actuales (RFP / entrada)</div>
+
+        {% if initial_existing and initial_existing|length > 0 %}
+          <ul class="space-y-2">
+            {% for a in initial_existing %}
+              <li class="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
+                <div class="text-sm text-slate-800 min-w-0">
+                  <div class="truncate">
+                    {{ a.original_name|default:a.file.name }}
+                  </div>
+                  <div class="text-xs text-slate-500">{{ a.uploaded_at|date:"d-m-Y H:i" }}</div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                  <a href="{{ a.file.url }}" target="_blank"
+                     class="inline-flex items-center px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+                    Ver
+                  </a>
+
+                  {# ✅ Botón abre modal (sin confirm del navegador) #}
+                  <button type="button"
+                          class="inline-flex items-center px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold"
+                          data-delete-open="1"
+                          data-delete-form="delAtt{{ a.id }}"
+                          data-delete-name="{{ a.original_name|default:a.file.name|escape }}">
+                    Eliminar
+                  </button>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+
+          {# Forms ocultos (uno por adjunto) - fuera del form principal #}
+          {% for a in initial_existing %}
+            <form id="delAtt{{ a.id }}"
+                  method="post"
+                  action="{% url 'finanzas_comercial:deal_attachment_delete' a.id %}"
+                  class="hidden">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            </form>
+          {% endfor %}
+
+        {% else %}
+          <div class="text-sm text-slate-500">Sin adjuntos.</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<div id="confirmDeleteModal" class="fixed inset-0 z-[80] hidden" aria-hidden="true">
+  <div id="confirmDeleteOverlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"></div>
+
+  <div class="relative w-full h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+      <div class="p-5">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.001 10h2v5h-2zM11 16h2v2h-2z"></path>
+              <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path>
+            </svg>
+          </div>
+
+          <div class="min-w-0">
+            <div class="text-lg font-extrabold text-slate-900">Eliminar adjunto</div>
+            <div class="text-sm text-slate-600 mt-1">
+              ¿Seguro que deseas eliminar <span id="confirmDeleteName" class="font-semibold text-slate-900">este adjunto</span>?
+              <div class="text-xs text-slate-500 mt-1">Esta acción no se puede deshacer.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 flex items-center justify-end gap-2">
+          <button type="button" id="btnCancelConfirmDelete"
+                  class="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold">
+            Cancelar
+          </button>
+
+          <button type="button" id="btnConfirmDelete"
+                  class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold shadow-sm">
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("input, select, textarea").forEach((el)=>{
+    // estilos inputs del form principal
+    document.querySelectorAll("#dealForm input, #dealForm select, #dealForm textarea").forEach((el)=>{
       el.classList.add("mt-1","w-full","px-3","py-2","rounded-xl","border","border-slate-200");
       el.classList.add("focus:outline-none","focus:ring-2","focus:ring-blue-200");
     });
 
+    // agregar líneas de carga
     const box = document.getElementById("attachmentsBox");
     const btn = document.getElementById("btnAddAttachment");
     if (box && btn) {
@@ -154,6 +210,67 @@
         box.appendChild(input);
       });
     }
+
+    // ===== Modal confirmar eliminación =====
+    const modal = document.getElementById("confirmDeleteModal");
+    const overlay = document.getElementById("confirmDeleteOverlay");
+    const nameEl = document.getElementById("confirmDeleteName");
+    const btnCancel = document.getElementById("btnCancelConfirmDelete");
+    const btnConfirm = document.getElementById("btnConfirmDelete");
+
+    let currentFormId = null;
+
+    function openConfirm(formId, fileName){
+      currentFormId = formId;
+      if (nameEl) nameEl.textContent = fileName || "este adjunto";
+      if (modal){
+        modal.classList.remove("hidden");
+        modal.setAttribute("aria-hidden", "false");
+      }
+      document.body.classList.add("overflow-hidden");
+      // reset estado botón
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = "Sí, eliminar";
+    }
+
+    function closeConfirm(){
+      currentFormId = null;
+      if (modal){
+        modal.classList.add("hidden");
+        modal.setAttribute("aria-hidden", "true");
+      }
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    document.querySelectorAll("[data-delete-open='1']").forEach((b)=>{
+      b.addEventListener("click", ()=>{
+        const formId = b.getAttribute("data-delete-form");
+        const fileName = b.getAttribute("data-delete-name");
+        if (!formId) return;
+        openConfirm(formId, fileName);
+      });
+    });
+
+    overlay && overlay.addEventListener("click", closeConfirm);
+    btnCancel && btnCancel.addEventListener("click", closeConfirm);
+
+    btnConfirm && btnConfirm.addEventListener("click", ()=>{
+      if (!currentFormId) return closeConfirm();
+      const f = document.getElementById(currentFormId);
+      if (!f) return closeConfirm();
+
+      // evita doble click
+      btnConfirm.disabled = true;
+      btnConfirm.textContent = "Eliminando...";
+
+      f.submit();
+    });
+
+    document.addEventListener("keydown", (e)=>{
+      if (e.key === "Escape" && modal && !modal.classList.contains("hidden")){
+        closeConfirm();
+      }
+    });
   });
 </script>
 {% endblock %}

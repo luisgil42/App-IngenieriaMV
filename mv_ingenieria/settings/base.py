@@ -10,10 +10,26 @@ load_dotenv(os.getenv("ENV_FILE", BASE_DIR / ".env")) # opcional
 
 
 def env_bool(name: str, default: bool = False) -> bool:
+    """
+    Convierte variables de entorno a boolean de forma robusta.
+    Acepta: 1/0, true/false, yes/no, on/off, y/n.
+    """
     v = os.getenv(name)
     if v is None:
         return default
-    return v.strip().lower() in ("1", "true", "yes", "y", "on")
+
+    s = str(v).strip().lower()
+
+    # valores falsos explícitos
+    if s in ("0", "false", "no", "n", "off", ""):
+        return False
+
+    # valores verdaderos explícitos
+    if s in ("1", "true", "yes", "y", "on"):
+        return True
+
+    # si viene cualquier otra cosa rara, cae al default
+    return default
 
 
 # -----------------------------------------------------------------------------
@@ -44,13 +60,16 @@ ASGI_APPLICATION = "mv_ingenieria.asgi.application"
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
     # Django
+    "django.contrib.admin",          # ✅ FALTABA
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    
+
+    # ✅ Storage (Wasabi / S3)
+    "storages",
 
     # Seguridad
     "axes",
@@ -163,22 +182,58 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 
 # -----------------------------------------------------------------------------
-# Wasabi (opcional)
+# Wasabi (opcional) - Media en S3 compatible (Wasabi)
 # -----------------------------------------------------------------------------
 USE_WASABI = env_bool("USE_WASABI", False)
 
 if USE_WASABI:
+    # ✅ Django storages (S3Boto3Storage)
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    AWS_STORAGE_BUCKET_NAME = os.getenv("WASABI_BUCKET_NAME", "")
-    AWS_ACCESS_KEY_ID = os.getenv("WASABI_ACCESS_KEY_ID", "")
-    AWS_SECRET_ACCESS_KEY = os.getenv("WASABI_SECRET_ACCESS_KEY", "")
-    AWS_S3_ENDPOINT_URL = os.getenv("WASABI_ENDPOINT_URL", "")
-    AWS_S3_REGION_NAME = os.getenv("WASABI_REGION", "us-east-1")
+
+    # ✅ Django 4.2+ / 5.x (recomendado)
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }
+
+    # ✅ Tus env vars (WASABI_GZ_*). Dejamos fallback a WASABI_* por compat.
+    AWS_STORAGE_BUCKET_NAME = (
+        os.getenv("WASABI_GZ_BUCKET_NAME")
+        or os.getenv("WASABI_BUCKET_NAME")
+        or ""
+    )
+    AWS_ACCESS_KEY_ID = (
+        os.getenv("WASABI_GZ_ACCESS_KEY_ID")
+        or os.getenv("WASABI_ACCESS_KEY_ID")
+        or ""
+    )
+    AWS_SECRET_ACCESS_KEY = (
+        os.getenv("WASABI_GZ_SECRET_ACCESS_KEY")
+        or os.getenv("WASABI_SECRET_ACCESS_KEY")
+        or ""
+    )
+    AWS_S3_REGION_NAME = (
+        os.getenv("WASABI_GZ_REGION_NAME")
+        or os.getenv("WASABI_REGION_NAME")
+        or os.getenv("WASABI_REGION")
+        or "us-east-1"
+    )
+    AWS_S3_ENDPOINT_URL = (
+        os.getenv("WASABI_GZ_ENDPOINT_URL")
+        or os.getenv("WASABI_ENDPOINT_URL")
+        or ""
+    )
+
+    # Ajustes S3/Wasabi
     AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = True
     AWS_S3_FILE_OVERWRITE = False
 
+    # URLs firmadas (privado). Si quieres links “públicos” sin expirar, esto debe ser False
+    AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", True)
+
+    # (Opcional pero recomendable para compatibilidad)
+    AWS_S3_ADDRESSING_STYLE = os.getenv("AWS_S3_ADDRESSING_STYLE", "virtual")
 
 # -----------------------------------------------------------------------------
 # Seguridad común (prod/dev ajusta en overrides)

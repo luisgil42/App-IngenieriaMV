@@ -1,5 +1,8 @@
 # finanzas_comercial/urls.py
-from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
 
 from . import views_company as company_views
 from . import views_contacto, views_cotizaciones, views_deals, views_tareas
@@ -39,6 +42,7 @@ urlpatterns = [
 
     path("negocios/exportar.xlsx", views_deals.deal_export_xlsx, name="deal_export_xlsx"),
     path("negocios/importar/", views_deals.deal_import, name="deal_import"),
+    path("negocios/importar/formato.xlsx", views_deals.deal_import_template_xlsx, name="deal_import_template_xlsx"),
 
     # ETAPAS (se gestionan desde la vista de negocios, pero endpoints separados)
     path("negocios/etapas/crear/", views_deals.deal_stage_create, name="deal_stage_create"),
