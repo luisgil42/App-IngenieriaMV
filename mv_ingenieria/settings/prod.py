@@ -1,3 +1,4 @@
+# mv_ingenieria/settings/prod.py
 from .base import *  # noqa
 
 DEBUG = False
@@ -8,6 +9,18 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 TRUSTED_DEVICE_COOKIE_SECURE = True
+
+# --- FIX Render hosts/CSRF ---
+# Si no configuraste env vars en Render, base.py deja localhost/127.0.0.1
+# y eso provoca 400 DisallowedHost. En prod forzamos defaults para Render.
+if ALLOWED_HOSTS == ["localhost", "127.0.0.1"]:
+    ALLOWED_HOSTS = ["app-ingenieriamv.onrender.com", ".onrender.com"]
+
+if not CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = ["https://app-ingenieriamv.onrender.com", "https://*.onrender.com"]
+
+USE_X_FORWARDED_HOST = True
+# ----------------------------
 
 # HSTS (déjalo 0 al inicio y luego lo subes)
 SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
