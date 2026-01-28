@@ -25,6 +25,49 @@ from .services_trusted import (make_trusted_device, revoke_all_trusted_devices,
 
 ensure_bootstrap_admin()
 
+from functools import wraps
+
+from django.contrib import messages
+from django.shortcuts import redirect
+
+
+def require_perm(code: str):
+    """
+    Decorador: exige permiso 'code'.
+    - Superuser pasa.
+    - Si tu User tiene has_perm_code (tu sistema), lo usa.
+    - Si no, intenta con user.has_perm (Django).
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped(request, *args, **kwargs):
+            user = getattr(request, "user", None)
+
+            if not user or not user.is_authenticated:
+                return redirect("usuarios:login")
+
+            if getattr(user, "is_superuser", False):
+                return view_func(request, *args, **kwargs)
+
+            # 1) Permisos por tu sistema (User.has_perm_code)
+            try:
+                if hasattr(user, "has_perm_code") and user.has_perm_code(code):
+                    return view_func(request, *args, **kwargs)
+            except Exception:
+                pass
+
+            # 2) Permisos Django nativos
+            try:
+                if user.has_perm(code):
+                    return view_func(request, *args, **kwargs)
+            except Exception:
+                pass
+
+            messages.error(request, "No tienes permisos para acceder a esta sección.")
+            return redirect("core:dashboard")
+        return _wrapped
+    return decorator
+
 # -----------------------------------------------------------------------------
 # helpers
 # -----------------------------------------------------------------------------
@@ -185,8 +228,6 @@ def _trusted_cookie_name() -> str:
 # Auth
 # -----------------------------------------------------------------------------
 def login_view(request):
-    from common.bootstrap_admin import ensure_bootstrap_admin
-    ensure_bootstrap_admin()
     if request.user.is_authenticated:
         return redirect("core:dashboard")
 
