@@ -1,3 +1,5 @@
+from functools import wraps
+
 from django.conf import settings
 # usuarios/views.py
 from django.contrib import messages
@@ -10,10 +12,6 @@ from django.utils import timezone
 # django-otp (para saber si tiene 2FA confirmado y para resetear)
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
-from common.bootstrap_admin import ensure_bootstrap_admin
-
-ensure_bootstrap_admin()
-
 from .forms import (LoginForm, OTPVerifyForm, RoleForm, TOTPSetupVerifyForm,
                     UserForm)
 from .models import PermissionCode, Role, RolePermission, TrustedDevice, User
@@ -22,13 +20,6 @@ from .services_2fa import (confirm_totp_device, generate_backup_codes,
                            verify_any_otp)
 from .services_trusted import (make_trusted_device, revoke_all_trusted_devices,
                                revoke_trusted_device, verify_trusted_device)
-
-ensure_bootstrap_admin()
-
-from functools import wraps
-
-from django.contrib import messages
-from django.shortcuts import redirect
 
 
 def require_perm(code: str):
@@ -140,16 +131,18 @@ def _ensure_base_roles():
     """
     Crea los roles mínimos:
     - Admin (requiere 2FA)
-    - Comercial (no requiere 2FA por defecto)
+    - Comercial (por defecto NO requiere 2FA al crearse, pero luego se puede editar)
 
-    ✅ Si ya existen pero están inactivos (o Admin sin require_2fa), los re-activa y corrige.
+    ✅ Si ya existen:
+      - Admin: se fuerza require_2fa=True siempre (y activo)
+      - Comercial: solo se reactiva si estaba inactivo (NO se pisa require_2fa)
     """
     admin_role, _ = Role.objects.get_or_create(
         name="Admin",
         defaults={"require_2fa": True, "is_active": True},
     )
 
-    # ✅ si ya existía, aseguramos flags correctos
+    # Admin SIEMPRE activo y SIEMPRE con 2FA
     changed = False
     if not admin_role.is_active:
         admin_role.is_active = True
@@ -160,23 +153,21 @@ def _ensure_base_roles():
     if changed:
         admin_role.save(update_fields=["is_active", "require_2fa"])
 
-    comercial_role, _ = Role.objects.get_or_create(
+    comercial_role, created = Role.objects.get_or_create(
         name="Comercial",
         defaults={"require_2fa": False, "is_active": True},
     )
 
-    # ✅ si ya existía pero estaba inactivo, lo reactivamos
+    # Comercial: solo reactivar si estaba inactivo
     if not comercial_role.is_active:
         comercial_role.is_active = True
         comercial_role.save(update_fields=["is_active"])
 
-    # (si por alguna razón Comercial quedó con require_2fa True, lo corregimos)
-    if comercial_role.require_2fa:
-        comercial_role.require_2fa = False
-        comercial_role.save(update_fields=["require_2fa"])
+    # ✅ IMPORTANTE:
+    # NO forzamos comercial_role.require_2fa a False aquí.
+    # Si el usuario lo cambió desde la UI, se respeta.
 
     return admin_role, comercial_role
-
 
 def _assign_permissions_to_role(role: Role, perm_codes):
     perms = PermissionCode.objects.filter(code__in=list(perm_codes))

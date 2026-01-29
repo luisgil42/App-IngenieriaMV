@@ -2,241 +2,133 @@
 {% block title %}Dashboard - MV{% endblock %}
 
 {% block dashboard_content %}
-<div class="max-w-6xl mx-auto">
+<div class="max-w-7xl mx-auto space-y-6">
 
+  
   <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-6">
-    <div>
-      <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900">Dashboard</h1>
-      <p class="text-slate-600 mt-1">
-        Accesos rápidos según tus permisos.
-      </p>
+<div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+  <div>
+    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900">Dashboard Comercial</h1>
+    <p class="text-slate-600 mt-1">Resumen ejecutivo de negocios y cotizaciones.</p>
+  </div>
+</div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+    <div class="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-sm text-slate-500 font-semibold">Negocios (Total)</div>
+          <div class="text-3xl font-extrabold text-slate-900 mt-1">{{ deals_total|default:0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">Todos los negocios registrados</div>
+        </div>
+        <div class="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+          <i data-lucide="briefcase-business" class="w-5 h-5 text-blue-700"></i>
+        </div>
+      </div>
     </div>
 
-    <div class="flex items-center gap-2">
-      <a href="{% url 'usuarios:security' %}"
-         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 font-semibold shadow-sm">
-        <i data-lucide="shield-check" class="w-4 h-4 text-slate-700"></i>
-        Seguridad (2FA)
-      </a>
-      {% if request.user.is_staff %}
-      <a href="{% url 'usuarios:user_list' %}"
-         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm">
-        <i data-lucide="users" class="w-4 h-4"></i>
-        Usuarios
-      </a>
-      {% endif %}
+    <div class="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-sm text-slate-500 font-semibold">Negocios (En proceso)</div>
+          <div class="text-3xl font-extrabold text-slate-900 mt-1">{{ deals_in_progress|default:0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">Activos / abiertos</div>
+        </div>
+        <div class="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+          <i data-lucide="activity" class="w-5 h-5 text-amber-700"></i>
+        </div>
+      </div>
     </div>
+
+    <div class="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-sm text-slate-500 font-semibold">Negocios (Cerrados)</div>
+          <div class="text-3xl font-extrabold text-slate-900 mt-1">{{ deals_closed|default:0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">Ganados / Perdidos / Finalizados</div>
+        </div>
+        <div class="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-700"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-sm text-slate-500 font-semibold">Cotizaciones (Total)</div>
+          <div class="text-3xl font-extrabold text-slate-900 mt-1">{{ quotes_total|default:0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">
+            En proceso: <span class="font-semibold">{{ quotes_in_progress|default:0 }}</span> ·
+            Cerradas: <span class="font-semibold">{{ quotes_closed|default:0 }}</span>
+          </div>
+        </div>
+        <div class="w-11 h-11 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center">
+          <i data-lucide="file-text" class="w-5 h-5 text-purple-700"></i>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- KPI row -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-slate-500">Estado de cuenta</div>
-        <i data-lucide="user" class="w-5 h-5 text-slate-400"></i>
-      </div>
-      <div class="mt-2 text-lg font-extrabold text-slate-900">
-        {{ request.user.get_full_name|default:request.user.username }}
-      </div>
-      <div class="text-xs text-slate-500 mt-1">
-        {% if request.user.is_superuser %}Superusuario
-{% elif request.user.es_admin_general %}Administrador
-{% else %}Usuario{% endif %}
-      </div>
-    </div>
+  <!-- Charts -->
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
 
-    <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-slate-500">Seguridad</div>
-        <i data-lucide="shield" class="w-5 h-5 text-slate-400"></i>
-      </div>
-      <div class="mt-2 text-lg font-extrabold text-slate-900">
-        {% if request.user.twofa_confirmed %}2FA activo{% else %}2FA pendiente{% endif %}
-      </div>
-      <div class="text-xs text-slate-500 mt-1">
-        {% if request.user.requires_2fa %}Requerido para tu perfil{% else %}Opcional{% endif %}
-      </div>
-    </div>
-
-    <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-slate-500">Accesos</div>
-        <i data-lucide="layout-dashboard" class="w-5 h-5 text-slate-400"></i>
-      </div>
-      <div class="mt-2 text-lg font-extrabold text-slate-900">
-        {% if request.user.is_staff or request.user.is_superuser %}Admin{% else %}General{% endif %}
-      </div>
-      <div class="text-xs text-slate-500 mt-1">
-        Menú filtrado por permisos
-      </div>
-    </div>
-  </div>
-
-  <!-- Modules -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-    <!-- Finanzas Comercial -->
-    <div class="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-      <div class="p-5">
+    <!-- Donut Negocios -->
+    <div class="xl:col-span-2 rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-200">
         <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-              <i data-lucide="wallet" class="w-6 h-6 text-blue-700"></i>
-            </div>
-            <div>
-              <div class="text-lg font-extrabold text-slate-900">Finanzas Comercial</div>
-              <div class="text-sm text-slate-600">CRM + ventas + soporte a cotizaciones (en construcción)</div>
-            </div>
+          <div>
+            <div class="text-lg font-extrabold text-slate-900">Negocios</div>
+            <div class="text-sm text-slate-600">Distribución: en proceso vs cerrados</div>
           </div>
-
-          <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700">
-            Módulo
-          </span>
-        </div>
-
-        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <!-- Contactos (único con URL real por ahora) -->
-          <div class="rounded-2xl border border-slate-200 p-4 bg-slate-50">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-bold text-slate-900">Contactos</div>
-              <i data-lucide="contact" class="w-4 h-4 text-slate-400"></i>
-            </div>
-            <div class="text-xs text-slate-600 mt-1">Personas, teléfonos, correos y seguimiento.</div>
-
-            <div class="mt-3">
-              {% url 'finanzas_comercial:contact_list' as fin_contacts %}
-              {% if fin_contacts %}
-                <a href="{{ fin_contacts }}"
-                   class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
-                  <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                  Entrar
-                </a>
-              {% else %}
-                <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 text-sm font-semibold">
-                  <i data-lucide="lock" class="w-4 h-4"></i>
-                  No disponible
-                </span>
-              {% endif %}
-            </div>
-          </div>
-
-          <!-- Placeholder rápido: lo mostramos solo como “Próximamente” -->
-          <div class="rounded-2xl border border-slate-200 p-4 bg-white">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-bold text-slate-900">Empresas / Negocios / Tareas</div>
-              <i data-lucide="sparkles" class="w-4 h-4 text-slate-400"></i>
-            </div>
-            <div class="text-xs text-slate-600 mt-1">
-              Secciones ya listadas en el menú lateral (sin URL por ahora).
-            </div>
-            <div class="mt-3">
-              <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-sm font-semibold">
-                <i data-lucide="clock" class="w-4 h-4"></i>
-                Próximamente
-              </span>
-            </div>
+          <div class="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center">
+            <i data-lucide="pie-chart" class="w-5 h-5 text-slate-700"></i>
           </div>
         </div>
       </div>
 
-      <div class="px-5 pb-5">
-        <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-          <div class="flex items-center justify-between">
-            <div class="text-sm font-bold text-slate-900">Acceso al módulo</div>
-            <i data-lucide="key" class="w-4 h-4 text-slate-400"></i>
-          </div>
-          <div class="text-xs text-slate-600 mt-1">
-            Disponible para usuarios con permisos de Comercial y/o Administrador.
-          </div>
+      <div class="p-5">
+        <div class="h-[280px]">
+          <canvas id="dealsDonut"></canvas>
+        </div>
 
-          <div class="mt-3">
-            {% url 'finanzas_comercial:home' as fin_home %}
-            {% if fin_home %}
-              <a href="{{ fin_home }}"
-                 class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 text-sm font-semibold shadow-sm">
-                <i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-700"></i>
-                Ver módulo
-              </a>
-            {% else %}
-              <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 text-sm font-semibold">
-                <i data-lucide="ban" class="w-4 h-4"></i>
-                Sin ruta definida
-              </span>
-            {% endif %}
+        <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+            <div class="text-slate-500 font-semibold">En proceso</div>
+            <div class="text-xl font-extrabold text-slate-900">{{ deals_in_progress|default:0 }}</div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+            <div class="text-slate-500 font-semibold">Cerrados</div>
+            <div class="text-xl font-extrabold text-slate-900">{{ deals_closed|default:0 }}</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Usuarios & Seguridad -->
-    <div class="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-      <div class="p-5">
+    <!-- Cotizaciones -->
+    <div class="xl:col-span-3 rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-200">
         <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-              <i data-lucide="shield-check" class="w-6 h-6 text-emerald-700"></i>
-            </div>
-            <div>
-              <div class="text-lg font-extrabold text-slate-900">Usuarios & Seguridad</div>
-              <div class="text-sm text-slate-600">Usuarios, roles/permisos y 2FA</div>
-            </div>
+          <div>
+            <div class="text-lg font-extrabold text-slate-900">Cotizaciones por mes</div>
+            <div class="text-sm text-slate-600">Últimos 12 meses: en proceso vs cerradas + total</div>
           </div>
-
-          <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700">
-            Sistema
-          </span>
-        </div>
-
-        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="rounded-2xl border border-slate-200 p-4 bg-slate-50">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-bold text-slate-900">Seguridad (2FA)</div>
-              <i data-lucide="lock" class="w-4 h-4 text-slate-400"></i>
-            </div>
-            <div class="text-xs text-slate-600 mt-1">Configura autenticación en dos pasos y dispositivos.</div>
-            <div class="mt-3">
-              <a href="{% url 'usuarios:security' %}"
-                 class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-sm">
-                <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                Configurar
-              </a>
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-slate-200 p-4 bg-white">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-bold text-slate-900">Usuarios</div>
-              <i data-lucide="users" class="w-4 h-4 text-slate-400"></i>
-            </div>
-            <div class="text-xs text-slate-600 mt-1">Gestión administrativa de usuarios y permisos.</div>
-            <div class="mt-3">
-              {% if request.user.is_staff %}
-                <a href="{% url 'usuarios:user_list' %}"
-                   class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
-                  <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                  Administrar
-                </a>
-              {% else %}
-                <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-sm font-semibold">
-                  <i data-lucide="lock" class="w-4 h-4"></i>
-                  Solo Admin
-                </span>
-              {% endif %}
-            </div>
+          <div class="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center">
+            <i data-lucide="bar-chart-3" class="w-5 h-5 text-slate-700"></i>
           </div>
         </div>
       </div>
 
-      <div class="px-5 pb-5">
-        <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-          <div class="flex items-center justify-between">
-            <div class="text-sm font-bold text-slate-900">Recomendación</div>
-            <i data-lucide="info" class="w-4 h-4 text-slate-400"></i>
-          </div>
-          <div class="text-xs text-slate-600 mt-1">
-            Si tu rol requiere 2FA, actívalo ahora para evitar bloqueos de acceso.
-          </div>
+      <div class="p-5">
+        <div class="h-[340px]">
+          <canvas id="quotesChart"></canvas>
+        </div>
+
+        <div class="mt-3 text-xs text-slate-500">
+          *Si no hay barras, revisa que existan fechas en las cotizaciones (created_at/fecha).
         </div>
       </div>
     </div>
@@ -244,4 +136,131 @@
   </div>
 
 </div>
+
+<!-- Data JSON seguro -->
+{{ deals_chart|json_script:"deals-data" }}
+{{ quotes_chart|json_script:"quotes-data" }}
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  (function () {
+    const deals = JSON.parse(document.getElementById("deals-data").textContent || "{}");
+    const quotes = JSON.parse(document.getElementById("quotes-data").textContent || "{}");
+
+    // ---------- Helpers ----------
+    function sum(arr) {
+      return (arr || []).reduce((a,b) => a + (Number(b) || 0), 0);
+    }
+
+    // ---------- Donut Negocios ----------
+    const ctxDonut = document.getElementById("dealsDonut");
+    if (ctxDonut && deals.labels && deals.values) {
+      const total = sum(deals.values) || 1;
+
+      new Chart(ctxDonut, {
+        type: "doughnut",
+        data: {
+          labels: deals.labels,
+          datasets: [{
+            data: deals.values,
+            borderWidth: 2,
+            hoverOffset: 10,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "72%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { usePointStyle: true, boxWidth: 10 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = Number(ctx.raw || 0);
+                  const pct = Math.round((v / total) * 100);
+                  return ` ${ctx.label}: ${v} (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ---------- Cotizaciones: barras apiladas + línea total ----------
+    const ctxQ = document.getElementById("quotesChart");
+    if (ctxQ && quotes.labels) {
+      const labels = quotes.labels || [];
+      const inProg = quotes.in_progress || [];
+      const closed = quotes.closed || [];
+      const total = quotes.total || inProg.map((v, i) => (Number(v)||0) + (Number(closed[i])||0));
+
+      new Chart(ctxQ, {
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              type: "bar",
+              label: "En proceso",
+              data: inProg,
+              borderWidth: 0,
+              borderRadius: 12,
+              borderSkipped: false,
+              stack: "q",
+            },
+            {
+              type: "bar",
+              label: "Cerradas",
+              data: closed,
+              borderWidth: 0,
+              borderRadius: 12,
+              borderSkipped: false,
+              stack: "q",
+            },
+            {
+              type: "line",
+              label: "Total",
+              data: total,
+              tension: 0.35,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              borderWidth: 2,
+              fill: false,
+              yAxisID: "y",
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { usePointStyle: true, boxWidth: 10 }
+            },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              grid: { display: false },
+              ticks: { maxRotation: 0, autoSkip: true }
+            },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              grid: { color: "rgba(15,23,42,0.08)" } // slate-900 / 8%
+            }
+          }
+        }
+      });
+    }
+  })();
+</script>
 {% endblock %}
